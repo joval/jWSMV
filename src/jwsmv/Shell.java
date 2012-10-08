@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
+import javax.security.auth.login.FailedLoginException;
 
 import org.dmtf.wsman.AnyListType;
 import org.dmtf.wsman.AttributableEmpty;
@@ -59,7 +60,7 @@ public class Shell implements Constants {
     /**
      * Return an Iterator of all the remote shells available at the specified port.
      */
-    public static Iterable<Shell> enumerate(Port port) throws JAXBException, IOException, FaultException {
+    public static Iterable<Shell> enumerate(Port port) throws JAXBException, IOException, FaultException, FailedLoginException {
 	//
 	// Build an optimized enumerate operation.
 	//
@@ -149,7 +150,7 @@ public class Shell implements Constants {
      * Create a new Shell on the specified port, with the specified environment, in the specified directory.
      */
     public Shell(Port port, String[] env, String cwd)
-		throws JAXBException, IOException, IllegalArgumentException, FaultException {
+		throws JAXBException, IOException, IllegalArgumentException, FaultException, FailedLoginException {
 
 	this.port = port;
 

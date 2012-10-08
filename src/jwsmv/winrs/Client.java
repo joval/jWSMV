@@ -14,6 +14,7 @@ import java.io.OutputStream;
 import java.net.PasswordAuthentication;
 import java.net.URL;
 import java.util.ArrayList;
+import javax.security.auth.login.FailedLoginException;
 
 import jline.ConsoleReader;
 import jline.Terminal;
@@ -142,6 +143,9 @@ public class Client implements Constants {
 		inputThread.close();
 		shell.dispose();
 		System.exit(exitValue);
+	    } catch (FailedLoginException e) {
+		System.out.println("Authentication failed for user " + user);
+		System.exit(0x4DC); // ERROR_NOT_AUTHENTICATED
 	    } catch (Exception e) {
 		e.printStackTrace();
 		System.exit(1);

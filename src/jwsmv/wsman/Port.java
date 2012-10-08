@@ -24,6 +24,7 @@ import java.util.UUID;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.security.auth.login.LoginException;
+import javax.security.auth.login.FailedLoginException;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
@@ -148,7 +149,7 @@ public class Port implements Constants {
     }
 
     public Object dispatch(String action, List<Object> headers, Object input)
-		throws IOException, JAXBException, FaultException {
+		throws IOException, JAXBException, FaultException, FailedLoginException {
 
 	Header header = Factories.SOAP.createHeader();
 
@@ -396,8 +397,10 @@ public class Port implements Constants {
 
     /**
      * Set the authentication scheme for the retry, or return false if there are no more options.
+     *
+     * @throws FailedLoginException if the specified login scheme was already attempted.
      */
-    private boolean nextAuthScheme(HttpURLConnection conn) {
+    private boolean nextAuthScheme(HttpURLConnection conn) throws FailedLoginException {
 	if (conn == null) {
 	    return false;
 	}
@@ -433,7 +436,7 @@ public class Port implements Constants {
 	if (basic) {
 	    switch(scheme) {
 	      case BASIC:
-		return false;
+		throw new FailedLoginException();
 	      default:
 		scheme = AuthScheme.BASIC;
 		return true;
@@ -449,13 +452,13 @@ public class Port implements Constants {
 		scheme = AuthScheme.KERBEROS;
 		return true;
 	      case KERBEROS:
-		return false;
+		throw new FailedLoginException();
 	    }
 	}
 	if (ntlm) {
 	    switch(scheme) {
 	      case NTLM:
-		return false;
+		throw new FailedLoginException();
 	      default:
 		scheme = AuthScheme.NTLM;
 		return true;
@@ -464,7 +467,7 @@ public class Port implements Constants {
 	if (kerberos) {
 	    switch(scheme) {
 	      case KERBEROS:
-		return false;
+		throw new FailedLoginException();
 	      default:
 		scheme = AuthScheme.KERBEROS;
 		return true;

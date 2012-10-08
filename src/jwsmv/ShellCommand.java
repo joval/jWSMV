@@ -11,6 +11,7 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
+import javax.security.auth.login.FailedLoginException;
 
 import com.microsoft.wsman.fault.WSManFaultType;
 import com.microsoft.wsman.shell.CommandLine;
@@ -207,14 +208,17 @@ public class ShellCommand extends Process implements Constants {
 	options.getOption().add(winrsSkipCmd);
 	commandOperation.addOptionSet(options);
 
-	CommandResponse response = commandOperation.dispatch(port);
-	lastDispatch = System.currentTimeMillis();
-	state = State.RUNNING;
-	disposable = true;
-	id = response.getCommandId();
-
-	stderrPipe = new PipedOutputStream();
-	stderr = new PipedInputStream(stderrPipe);
+	try {
+	    CommandResponse response = commandOperation.dispatch(port);
+	    lastDispatch = System.currentTimeMillis();
+	    state = State.RUNNING;
+	    disposable = true;
+	    id = response.getCommandId();
+	    stderrPipe = new PipedOutputStream();
+	    stderr = new PipedInputStream(stderrPipe);
+	} catch (FailedLoginException e) {
+	    throw new RuntimeException(e);
+	}
     }
 
     // Overrides of Process methods
@@ -319,6 +323,8 @@ public class ShellCommand extends Process implements Constants {
 			close();
 		    }
 		}
+	    } catch (FailedLoginException e) {
+		throw new IOException(e);
 	    } catch (JAXBException e) {
 		throw new IOException(e);
 	    } catch (FaultException e) {
@@ -441,6 +447,8 @@ public class ShellCommand extends Process implements Constants {
 			ShellCommand.this.finalize();
 		    }
 		}
+	    } catch (FailedLoginException e) {
+		throw new IOException(e);
 	    } catch (JAXBException e) {
 		throw new IOException(e);
 	    } catch (FaultException e) {

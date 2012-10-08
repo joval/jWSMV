@@ -5,6 +5,7 @@ package jwsmv.wsman.operation;
 
 import java.io.IOException;
 import java.util.List;
+import javax.security.auth.login.FailedLoginException;
 import javax.xml.bind.JAXBException;
 import javax.xml.datatype.Duration;
 
@@ -32,5 +33,5 @@ public interface IOperation<I, O> {
      * Get the output (i.e., SOAP response message body contents) for the operation, dispatched through the specified
      * port.
      */
-    O dispatch(Port port) throws IOException, JAXBException, FaultException;
+    O dispatch(Port port) throws IOException, JAXBException, FaultException, FailedLoginException;
 }

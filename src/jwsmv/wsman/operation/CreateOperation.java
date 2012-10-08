@@ -8,6 +8,7 @@ import java.util.List;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.xml.namespace.QName;
+import javax.security.auth.login.FailedLoginException;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
@@ -43,7 +44,7 @@ public class CreateOperation extends BaseOperation<AnyXmlType, Object> {
      * @returns either an org.w3c.ws.addressing.EndpointReferenceType, or an org.xmlsoap.ws.addressing.EndpointReferenceType.
      */
     @Override
-    public Object dispatch(Port port) throws IOException, JAXBException, FaultException {
+    public Object dispatch(Port port) throws IOException, JAXBException, FaultException, FailedLoginException {
         Object obj = dispatch0(port);
 	if (obj instanceof ResourceCreated) {
 	    //
