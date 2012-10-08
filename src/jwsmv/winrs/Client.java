@@ -41,26 +41,27 @@ public class Client implements Constants {
 
 	int index = 0;
 	for (; index < argv.length; index++) {
-	    String arg = argv[index];
-	    int ptr = arg.indexOf(":");
-	    if (!arg.startsWith("-")) {
+	    if (!argv[index].startsWith("-") && !argv[index].startsWith("/")) {
 		break;
-	    } else if (arg.equals("/?") || arg.equals("-?")) {
+	    }
+	    String arg = argv[index].substring(1);
+	    int ptr = arg.indexOf(":");
+	    if (arg.equals("?")) {
 		usage();
 		System.exit(0);
-	    } else if (arg.startsWith("-r:") || arg.startsWith("-remote:")) {
+	    } else if (arg.startsWith("r:") || arg.startsWith("remote:")) {
 		host = arg.substring(ptr+1);
-	    } else if (arg.equals("-un") || arg.equals("-unencrypted")) {
+	    } else if (arg.equals("un") || arg.equals("unencrypted")) {
 		encrypt = false;
-	    } else if (arg.equals("-noe") || arg.equals("-noecho")) {
+	    } else if (arg.equals("noe") || arg.equals("noecho")) {
 		echo = false;
-	    } else if (arg.startsWith("-u:") || arg.startsWith("-username:")) {
+	    } else if (arg.startsWith("u:") || arg.startsWith("username:")) {
 		user = arg.substring(ptr+1);
-	    } else if (arg.startsWith("-p:") || arg.startsWith("-password:")) {
+	    } else if (arg.startsWith("p:") || arg.startsWith("password:")) {
 		pass = arg.substring(ptr+1);
-	    } else if (arg.startsWith("-d:") || arg.startsWith("-directory:")) {
+	    } else if (arg.startsWith("d:") || arg.startsWith("directory:")) {
 		dir = arg.substring(ptr+1);
-	    } else if (arg.startsWith("-env:") || arg.startsWith("-environment:")) {
+	    } else if (arg.startsWith("env:") || arg.startsWith("environment:")) {
 		if (env == null) {
 		    env = new ArrayList<String>();
 		}

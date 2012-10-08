@@ -1,0 +1,6 @@
+gen-src/
+build/
+dist/
+components/winrs/jwsmv.jar
+components/ws-man/ws-man.jar
+components/ws-man/docs/api
