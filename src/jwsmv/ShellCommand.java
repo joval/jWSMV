@@ -47,11 +47,13 @@ import jwsmv.wsman.operation.SignalOperation;
  * @author David A. Solin
  * @version %I% %G%
  */
-public class ShellCommand extends Process implements Constants {
+public class ShellCommand extends Process implements Constants, Runnable {
+    static final long TIMEOUT_CODE = 2150858793L;
+
     /**
      * An enumeration of codes that can be issued to a running process using a signal.
      */
-    public enum SignalCode {
+    static enum SignalCode {
 	TERMINATE("http://schemas.microsoft.com/wbem/wsman/1/windows/shell/signal/terminate"),
 	CTL_C("http://schemas.microsoft.com/wbem/wsman/1/windows/shell/signal/ctrl_c"),
 	CTL_BREAK("http://schemas.microsoft.com/wbem/wsman/1/windows/shell/signal/ctrl_break");
@@ -70,9 +72,10 @@ public class ShellCommand extends Process implements Constants {
     /**
      * An enumeration of the possible states of a running process, embedding their URI values.
      */
-    public enum State {
+    static enum State {
 	DONE("http://schemas.microsoft.com/wbem/wsman/1/windows/shell/CommandState/Done"),
 	PENDING("http://schemas.microsoft.com/wbem/wsman/1/windows/shell/CommandState/Pending"),
+	ERROR("http://schemas.microsoft.com/wbem/wsman/1/windows/shell/CommandState/Error"),
 	RUNNING("http://schemas.microsoft.com/wbem/wsman/1/windows/shell/CommandState/Running");
 
 	private String value;
@@ -95,42 +98,11 @@ public class ShellCommand extends Process implements Constants {
 	}
     }
 
-    private Port port;
-    private String shellId, id;
-    private State state;
-    private int exitCode;
-    private InputStream stdout, stderr;
-    private PipedOutputStream stderrPipe;
-    private OutputStream stdin;
-    private String cmd;
-    private String[] args;
-    private boolean disposable;
-    private long lastDispatch;
-
-    /**
-     * Create a command for the specified Shell.
-     */
-    public ShellCommand(Shell shell, String cmd, String[] args) {
-	this.shellId = shell.id;
-	this.port = shell.port;
-	this.cmd = cmd;
-	this.args = args;
-	stdin = null;
-	stderr = null;
-	stdout = null;
-	exitCode = -1;
-	disposable = false;
-    }
-
     /**
      * Get the ID of the command.
      */
     public String getId() {
 	return id;
-    }
-
-    public long lastDispatch() {
-	return lastDispatch;
     }
 
     public String getCommand() {
@@ -148,19 +120,19 @@ public class ShellCommand extends Process implements Constants {
 	return sb.toString();
     }
 
-    public void setInteractive(boolean interactive) {
-	// no-op
-    }
-
     /**
-     * WARNING: If no Thread is reading the process output or error streams, this method will never return.  We
-     * previously attempted to read the streams from another thread, but asynchronous reads cause major performance
-     * problems.
+     * Wait for at most millis milliseconds for the process to finish executing.
      */
     public void waitFor(long millis) throws InterruptedException {
 	long endTime = System.currentTimeMillis() + millis;
-	while (state != State.DONE && System.currentTimeMillis() < endTime) {
+	while (isRunning() && System.currentTimeMillis() < endTime) {
 	    Thread.sleep(100);
+	}
+	long maxWait = endTime - System.currentTimeMillis();
+	if (maxWait > 0) {
+	    if (thread != null && thread.isAlive()) {
+		thread.join(maxWait);
+	    }
 	}
     }
 
@@ -171,6 +143,27 @@ public class ShellCommand extends Process implements Constants {
 	return state == State.RUNNING;
     }
 
+    /**
+     * Test to see if there was an error managing the remote process execution.
+     */
+    public boolean isError() {
+	return state == State.ERROR;
+    }
+
+    /**
+     * Get the error.
+     */
+    public Exception getError() throws IllegalStateException {
+	if (state == State.ERROR) {
+	    return error;
+	} else {
+	    throw new IllegalStateException(state.toString());
+	}
+    }
+
+    /**
+     * Start the process running.
+     */
     public void start() throws JAXBException, IOException, FaultException {
 	CommandLine cl = Factories.SHELL.createCommandLine();
 	cl.setCommand(cmd);
@@ -182,7 +175,7 @@ public class ShellCommand extends Process implements Constants {
 
 	CommandOperation commandOperation = new CommandOperation(cl);
 	commandOperation.addResourceURI(SHELL_URI);
-	commandOperation.addSelectorSet(getSelectorSet());
+	commandOperation.addSelectorSet(selector);
 
 	//
 	// The client-side mode for standard input is console if TRUE and pipe if FALSE. This does not
@@ -210,12 +203,15 @@ public class ShellCommand extends Process implements Constants {
 
 	try {
 	    CommandResponse response = commandOperation.dispatch(port);
-	    lastDispatch = System.currentTimeMillis();
 	    state = State.RUNNING;
 	    disposable = true;
 	    id = response.getCommandId();
+	    stdoutPipe = new PipedOutputStream();
+	    stdout = new PipedInputStream(stdoutPipe);
 	    stderrPipe = new PipedOutputStream();
 	    stderr = new PipedInputStream(stderrPipe);
+	    thread = new Thread(group, this, "ShellCommand:" + id);
+	    thread.start();
 	} catch (FailedLoginException e) {
 	    throw new RuntimeException(e);
 	}
@@ -248,9 +244,6 @@ public class ShellCommand extends Process implements Constants {
 
     @Override
     public InputStream getInputStream() {
-	if (stdout == null) {
-	    stdout = new CommandInputStream();
-	}
 	return stdout;
     }
 
@@ -269,7 +262,127 @@ public class ShellCommand extends Process implements Constants {
 	}
     }
 
+    // Implement Runnable
+
+    /**
+     * Read stdout and stderr from the remote process.
+     */
+    public void run() {
+	while(isRunning()) {
+	    try {
+		DesiredStreamType desired = Factories.SHELL.createDesiredStreamType();
+		desired.setCommandId(id);
+		desired.getValue().add(Shell.STDOUT);
+		desired.getValue().add(Shell.STDERR);
+		Receive receive = Factories.SHELL.createReceive();
+		receive.setDesiredStream(desired);
+		ReceiveOperation receiveOperation = new ReceiveOperation(receive);
+		receiveOperation.addResourceURI(SHELL_URI);
+		receiveOperation.addSelectorSet(selector);
+		OptionType keepAlive = Factories.WSMAN.createOptionType();
+		keepAlive.setName("WSMAN_CMDSHELL_OPTION_KEEPALIVE");
+		keepAlive.setValue("TRUE");
+		OptionSet options = Factories.WSMAN.createOptionSet();
+		options.getOption().add(keepAlive);
+		receiveOperation.addOptionSet(options);
+
+		ReceiveResponse response = receiveOperation.dispatch(port);
+		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+		for (StreamType stream : response.getStream()) {
+		    if (stream.isSetValue()) {
+			byte[] val = stream.getValue();
+			if (val.length > 0) {
+			    String streamName = stream.getName();
+			    if (Shell.STDOUT.equals(streamName)) {
+				stdoutPipe.write(val);
+				stdoutPipe.flush();
+			    } else if (Shell.STDERR.equals(streamName)) {
+				stderrPipe.write(val);
+				stderrPipe.flush();
+			    }
+			}
+		    }
+		}
+		if (response.isSetCommandState()) {
+		    CommandStateType state = response.getCommandState();
+		    ShellCommand.this.state = State.fromValue(state.getState());
+		    if (state.isSetExitCode()) {
+			exitCode = state.getExitCode().intValue();
+			//
+			// Per section section 3.1.4.14, point 4 of MS-WSMV specification client MUST send
+			// signal message with Terminate code after receiving final response from server.
+			//
+			ShellCommand.this.finalize();
+		    }
+		}
+	    } catch (FaultException e) {
+		boolean retry = false;
+		Fault fault = e.getFault();
+		if (fault.isSetDetail()) {
+		    for (Object obj : fault.getDetail().getAny()) {
+			if (obj instanceof JAXBElement) {
+			    obj = ((JAXBElement)obj).getValue();
+			}
+			if (obj instanceof WSManFaultType) {
+			    WSManFaultType wsFault = (WSManFaultType)obj;
+			    if (wsFault.getCode() == TIMEOUT_CODE) {
+				retry = true;
+			    }
+			}
+		    }
+		}
+		if (!retry) {
+		    error = e;
+		    state = State.ERROR;
+		}
+	    } catch (Exception e) {
+		error = e;
+		state = State.ERROR;
+	    }
+	}
+	try {
+	    stdoutPipe.close();
+	} catch (IOException e) {
+	}
+	try {
+	    stderrPipe.close();
+	} catch (IOException e) {
+	}
+    }
+
     // Internal
+
+    private Port port;
+    private String id;
+    private SelectorSetType selector;
+    private State state;
+    private int exitCode;
+    private PipedOutputStream stdoutPipe, stderrPipe;
+    private InputStream stdout, stderr;
+    private OutputStream stdin;
+    private String cmd;
+    private String[] args;
+    private boolean disposable;
+    private Exception error;
+    private ThreadGroup group;
+    private Thread thread;
+
+    /**
+     * Create a command for the specified Shell.
+     */
+    ShellCommand(Shell shell, String cmd, String[] args) {
+	selector = shell.getSelectorSet();
+	group = shell.group;
+	this.port = shell.port;
+	this.cmd = cmd;
+	this.args = args;
+	stdin = null;
+	stderr = null;
+	stdout = null;
+	exitCode = -1;
+	disposable = false;
+	state = State.PENDING;
+    }
 
     /**
      * Delete the ShellCommand on the target machine (idempotent).
@@ -283,7 +396,7 @@ public class ShellCommand extends Process implements Constants {
 		signal.setCode(SignalCode.TERMINATE.value());
 		SignalOperation signalOperation = new SignalOperation(signal);
 		signalOperation.addResourceURI(SHELL_URI);
-		signalOperation.addSelectorSet(getSelectorSet());
+		signalOperation.addSelectorSet(selector);
 		SignalResponse response = signalOperation.dispatch(port);
 		stderrPipe.close();
 	    } catch (Exception e) {
@@ -313,10 +426,9 @@ public class ShellCommand extends Process implements Constants {
 		send.getStream().add(stream);
 		SendOperation sendOperation = new SendOperation(send);
 		sendOperation.addResourceURI(SHELL_URI);
-		sendOperation.addSelectorSet(getSelectorSet());
+		sendOperation.addSelectorSet(selector);
 
 		SendResponse response = sendOperation.dispatch(port);
-		lastDispatch = System.currentTimeMillis();
 		if (response.isSetDesiredStream()) {
 		    StreamType rs = response.getDesiredStream();
 		    if (rs.getName().equals(Shell.STDIN) && rs.getEnd()) {
@@ -331,160 +443,5 @@ public class ShellCommand extends Process implements Constants {
 		throw new IOException(e);
 	    }
 	}
-    }
-
-    /**
-     * An InputStream implementation fills an internal buffer, when required, by issuing a receive operation
-     * to the process.
-     */
-    class CommandInputStream extends InputStream {
-	byte[] buff;
-	int pos;
-
-	CommandInputStream() {
-	    buff = new byte[0];
-	    pos = 0;
-	}
-
-	@Override
-	public int read(byte[] bytes) throws IOException {
-	    return read(bytes, 0, bytes.length);
-	}
-
-	@Override
-	public int read(byte[] bytes, int offset, int len) throws IOException {
-	    int maxToRead = Math.min(bytes.length - offset, len);
-	    if (available() > 0) {
-		int bytesToRead = Math.min(maxToRead, available());
-		System.arraycopy(buff, pos, bytes, offset, bytesToRead);
-		pos = pos + bytesToRead;
-		return bytesToRead;
-	    } else if (maxToRead > 0) {
-		int ch = read();
-		if (ch == -1) {
-		    return -1;
-		} else {
-		    bytes[offset] = (byte)(ch & 0xFF);
-		    return 1;
-		}
-	    } else {
-		return 0;
-	    }
-	}
-
-	@Override
-	public int read() throws IOException {
-	    if (pos < buff.length) {
-		// return from buffer
-		return buff[pos++];
-	    } else {
-		switch(state) {
-		  case RUNNING:
-		  case PENDING:
-		    refill();
-		    return read();
-		  case DONE:
-		  default:
-		    return -1;
-		}
-	    }
-	}
-
-	@Override
-	public int available() {
-	    return buff.length - pos;
-	}
-
-	// Private
-
-	private void refill() throws IOException {
-	    try {
-		DesiredStreamType desired = Factories.SHELL.createDesiredStreamType();
-		desired.setCommandId(id);
-		desired.getValue().add(Shell.STDOUT);
-		desired.getValue().add(Shell.STDERR);
-		Receive receive = Factories.SHELL.createReceive();
-		receive.setDesiredStream(desired);
-		ReceiveOperation receiveOperation = new ReceiveOperation(receive);
-		receiveOperation.addResourceURI(SHELL_URI);
-		receiveOperation.addSelectorSet(getSelectorSet());
-		OptionType keepAlive = Factories.WSMAN.createOptionType();
-		keepAlive.setName("WSMAN_CMDSHELL_OPTION_KEEPALIVE");
-		keepAlive.setValue("TRUE");
-		OptionSet options = Factories.WSMAN.createOptionSet();
-		options.getOption().add(keepAlive);
-		receiveOperation.addOptionSet(options);
-
-		ReceiveResponse response = receiveOperation.dispatch(port);
-		lastDispatch = System.currentTimeMillis();
-		buff = null;
-		pos = 0;
-		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-		for (StreamType stream : response.getStream()) {
-		    if (stream.isSetValue()) {
-			byte[] val = stream.getValue();
-			if (val.length > 0) {
-			    String streamName = stream.getName();
-			    if (Shell.STDOUT.equals(streamName)) {
-				buffer.write(val);
-			    } else if (Shell.STDERR.equals(streamName)) {
-				stderrPipe.write(val);
-				stderrPipe.flush();
-			    }
-			}
-		    }
-		}
-		buff = buffer.toByteArray();
-		if (response.isSetCommandState()) {
-		    CommandStateType state = response.getCommandState();
-		    ShellCommand.this.state = State.fromValue(state.getState());
-		    if (state.isSetExitCode()) {
-			exitCode = state.getExitCode().intValue();
-			//
-			// Per section section 3.1.4.14, point 4 of MS-WSMV specification client MUST send
-			// signal message with Terminate code after receiving final response from server.
-			//
-			ShellCommand.this.finalize();
-		    }
-		}
-	    } catch (FailedLoginException e) {
-		throw new IOException(e);
-	    } catch (JAXBException e) {
-		throw new IOException(e);
-	    } catch (FaultException e) {
-		boolean retry = false;
-		Fault fault = e.getFault();
-		if (fault.isSetDetail()) {
-		    for (Object obj : fault.getDetail().getAny()) {
-			if (obj instanceof JAXBElement) {
-			    obj = ((JAXBElement)obj).getValue();
-			}
-			if (obj instanceof WSManFaultType) {
-			    WSManFaultType wsFault = (WSManFaultType)obj;
-			    if (wsFault.getCode() == 2150858793L) {
-				retry = true;
-			    }
-			}
-		    }
-		}
-		if (retry) {
-		    refill();
-		} else {
-		    throw new IOException(e);
-		}
-	    }
-	}
-    }
-
-    /**
-     * Get a SelectorSetType with the ShellId.
-     */
-    private SelectorSetType getSelectorSet() {
-	SelectorSetType set = Factories.WSMAN.createSelectorSetType();
-	SelectorType sel = Factories.WSMAN.createSelectorType();
-	sel.setName("ShellId");
-	sel.getContent().add(shellId);
-	set.getSelector().add(sel);
-	return set;
     }
 }

@@ -6,11 +6,19 @@ package jwsmv;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.security.auth.login.FailedLoginException;
 
+import com.microsoft.wsman.config.ConfigType;
+import com.microsoft.wsman.config.ServiceType;
+import com.microsoft.wsman.shell.CommandLine;
+import com.microsoft.wsman.shell.CommandResponse;
+import com.microsoft.wsman.shell.EnvironmentVariable;
+import com.microsoft.wsman.shell.EnvironmentVariableList;
+import com.microsoft.wsman.shell.ShellType;
 import org.dmtf.wsman.AnyListType;
 import org.dmtf.wsman.AttributableEmpty;
 import org.dmtf.wsman.AttributablePositiveInteger;
@@ -27,17 +35,13 @@ import org.xmlsoap.ws.enumeration.Pull;
 import org.xmlsoap.ws.enumeration.PullResponse;
 import org.xmlsoap.ws.transfer.AnyXmlOptionalType;
 import org.xmlsoap.ws.transfer.AnyXmlType;
-import com.microsoft.wsman.shell.CommandLine;
-import com.microsoft.wsman.shell.CommandResponse;
-import com.microsoft.wsman.shell.EnvironmentVariable;
-import com.microsoft.wsman.shell.EnvironmentVariableList;
-import com.microsoft.wsman.shell.ShellType;
 
 import jwsmv.wsman.FaultException;
 import jwsmv.wsman.Port;
 import jwsmv.wsman.operation.CreateOperation;
 import jwsmv.wsman.operation.DeleteOperation;
 import jwsmv.wsman.operation.EnumerateOperation;
+import jwsmv.wsman.operation.GetOperation;
 import jwsmv.wsman.operation.PullOperation;
 
 /**
@@ -50,12 +54,6 @@ public class Shell implements Constants {
     public static final String STDOUT	= "stdout";
     public static final String STDERR	= "stderr";
     public static final String STDIN	= "stdin";
-
-    private boolean disposed = false;
-    private ShellCommand process;
-
-    Port port;
-    String id;
 
     /**
      * Return an Iterator of all the remote shells available at the specified port.
@@ -146,6 +144,13 @@ public class Shell implements Constants {
 	return shells;
     }
 
+    private String id;
+    private boolean disposed = false;
+    private HashMap<String, ShellCommand> processes;
+
+    ThreadGroup group;
+    Port port;
+
     /**
      * Create a new Shell on the specified port, with the specified environment, in the specified directory.
      */
@@ -153,6 +158,7 @@ public class Shell implements Constants {
 		throws JAXBException, IOException, IllegalArgumentException, FaultException, FailedLoginException {
 
 	this.port = port;
+	processes = new HashMap<String, ShellCommand>();
 
 	//
 	// Create the WS-Create input parameter
@@ -227,6 +233,7 @@ public class Shell implements Constants {
 		    for (SelectorType sel : ((SelectorSetType)param).getSelector()) {
 			if ("ShellId".equals(sel.getName())) {
 			    id = (String)sel.getContent().get(0);
+			    group = new ThreadGroup("Shell:" + id);
 			    break;
 			}
 		   }
@@ -234,32 +241,6 @@ public class Shell implements Constants {
 		if (id != null) break;
 	    }
 	}
-    }
-
-    /**
-     * Create and start a ShellCommand using this shell. The shell will be tied to the process, and will be deleted
-     * automatically once the process terminates. This was done because of a defect in the implementation of the MS-WSMV
-     * server, wherein it fails to decrement the number of active processes associated with the shell.
-     */
-    public ShellCommand exec(String command)
-		throws JAXBException, IOException, FaultException, IllegalStateException, IllegalArgumentException {
-
-	if (process != null) {
-	    throw new IllegalStateException(Message.getMessage(Message.ERROR_PROCESS_EXISTS, process.getId()));
-	}
-	ArrayList<String> args = new ArrayList<String>();
-	ArgumentTokenizer tok = new ArgumentTokenizer(command);
-	String arg = null;
-	while((arg = tok.nextArg()) != null) {
-	    args.add(arg);
-	}
-	String[] argv = new String[args.size() - 1];
-	for (int i=0; i < argv.length; i++) {
-	    argv[i] = args.get(i+1);
-	}
-	process = new ShellCommand(this, args.get(0), argv);
-	process.start();
-	return process;
     }
 
     /**
@@ -276,14 +257,92 @@ public class Shell implements Constants {
 	finalize();
     }
 
+    /**
+     * Return the maximum number of concurrent operations permitted by the server for the port's user account.
+     */
+    public int getMaxUserProcesses() throws JAXBException, IOException, FaultException {
+	try {
+	    AnyXmlOptionalType arg = Factories.TRANSFER.createAnyXmlOptionalType();
+	    GetOperation operation = new GetOperation(arg);
+	    operation.addResourceURI(CONFIG_URI);
+	    AnyXmlType any = (AnyXmlType)operation.dispatch(port);
+	    ConfigType config = (ConfigType)any.getAny();
+	    ServiceType service = config.getService();
+	    return service.getMaxConcurrentOperationsPerUser().intValue();
+	} catch (FailedLoginException e) {
+	    throw new RuntimeException(e);
+	}
+    }
+
+    /**
+     * Return the number of processes being managed by this shell.
+     *
+     * NOTE: There is a defect in Microsoft's implementation, wherein the number of active processes is never decremeted,
+     * even after a process has terminated, so long as the shell that launched it remains open. Accordingly, the number
+     * returned by this method does not ever decrease. When the limit has been reached, the shell must be disposed before
+     * another process can be created.
+     */
+    public int getProcessCount() {
+	return processes.size();
+    }
+
+    /**
+     * Returns the number of active (running) processes being managed by this shell.
+     */
+    public int getActiveProcessCount() {
+	int count = 0;
+	for (ShellCommand process : processes.values()) {
+	    if (process.isRunning()) {
+		count++;
+	    }
+	}
+	return count;
+    }
+
+    /**
+     * Create and start a ShellCommand using this shell. The shell will be tied to the process, and will be deleted
+     * automatically once the process terminates. This was done because of a defect in the implementation of the MS-WSMV
+     * server, wherein it fails to decrement the number of active processes associated with the shell.
+     */
+    public ShellCommand exec(String command)
+		throws JAXBException, IOException, FaultException, IllegalArgumentException {
+
+	ArrayList<String> args = new ArrayList<String>();
+	ArgumentTokenizer tok = new ArgumentTokenizer(command);
+	String arg = null;
+	while((arg = tok.nextArg()) != null) {
+	    args.add(arg);
+	}
+	String[] argv = new String[args.size() - 1];
+	for (int i=0; i < argv.length; i++) {
+	    argv[i] = args.get(i+1);
+	}
+	ShellCommand process = new ShellCommand(this, args.get(0), argv);
+	process.start();
+	processes.put(process.getId(), process);
+	return process;
+    }
+
     // Internal
+
+    /**
+     * Get a SelectorSetType with the ShellId.
+     */
+    SelectorSetType getSelectorSet() {
+	SelectorSetType set = Factories.WSMAN.createSelectorSetType();
+	SelectorType sel = Factories.WSMAN.createSelectorType();
+	sel.setName("ShellId");
+	sel.getContent().add(id);
+	set.getSelector().add(sel);
+	return set;
+    }
 
     /**
      * Closes the remote Shell instance (idempotent).
      */
     @Override
     protected void finalize() {
-	if (process != null) {
+	for (ShellCommand process : processes.values()) {
 	    process.finalize();
 	}
 	if (!disposed) {
@@ -306,6 +365,9 @@ public class Shell implements Constants {
 
     // Private
 
+    private Shell(Port port) {
+    }
+
     /**
      * Grab an existing shell on the target. Uses WS-Transfer Enumerate to validate the existence of the ID.
      *
@@ -314,6 +376,8 @@ public class Shell implements Constants {
     private Shell(Port port, String id) {
 	this.port = port;
 	this.id = id;
+	group = new ThreadGroup("Shell:" + id);
+	processes = new HashMap<String, ShellCommand>();
     }
 
     /**
@@ -421,4 +485,5 @@ public class Shell implements Constants {
 	    }
 	}
     }
+
 }
