@@ -29,7 +29,6 @@ public enum Message {
     STATUS_REQUEST,
     STATUS_RESPONSE,
     ERROR_RESPONSE,
-    ERROR_PROCESS_EXISTS,
     ERROR_EXCEPTION;
 
     private static IMessageConveyor mc;

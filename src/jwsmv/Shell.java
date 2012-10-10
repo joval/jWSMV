@@ -300,13 +300,9 @@ public class Shell implements Constants {
     }
 
     /**
-     * Create and start a ShellCommand using this shell. The shell will be tied to the process, and will be deleted
-     * automatically once the process terminates. This was done because of a defect in the implementation of the MS-WSMV
-     * server, wherein it fails to decrement the number of active processes associated with the shell.
+     * Create and start a ShellCommand using this shell.
      */
-    public ShellCommand exec(String command)
-		throws JAXBException, IOException, FaultException, IllegalArgumentException {
-
+    public ShellCommand exec(String command) throws JAXBException, IOException, FaultException, IllegalArgumentException {
 	ArrayList<String> args = new ArrayList<String>();
 	ArgumentTokenizer tok = new ArgumentTokenizer(command);
 	String arg = null;
@@ -485,5 +481,4 @@ public class Shell implements Constants {
 	    }
 	}
     }
-
 }
