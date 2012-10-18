@@ -55,4 +55,4 @@ LIB=$(subst $(SPACE),$(CLN),$(filter %.jar %.zip, $(wildcard $(LIBDIR)/*)))
 WSMAN=$(COMPONENTS)/ws-man
 WSMAN_LIB=$(WSMAN)/ws-man.jar
 WSMV=$(COMPONENTS)/winrs
-WSMV_LIB=$(WSMV)/jwsmv.jar
+WSMV_LIB=$(WSMV)/jWSMV.jar

@@ -264,7 +264,9 @@ public class Port implements Constants {
 		conn.setRequestProperty("Content-Type", "application/soap+xml;charset=UTF-8");
 
 		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-		marshaller.marshal(Factories.SOAP.createEnvelope(request), buffer);
+		synchronized(marshaller) {
+		    marshaller.marshal(Factories.SOAP.createEnvelope(request), buffer);
+		}
 		byte[] bytes = buffer.toByteArray();
 		conn.setFixedLengthStreamingMode(bytes.length);
 
@@ -334,13 +336,15 @@ public class Port implements Constants {
     /**
      * Read a SOAP envelope and return the unmarshalled object contents of the body.
      */
-    private Object getSOAPBodyContents(InputStream in, String contentType) throws JAXBException, IOException {
+    private synchronized Object getSOAPBodyContents(InputStream in, String contentType) throws JAXBException, IOException {
 	Object result = unmarshaller.unmarshal(in);
 	in.close();
 	if (debug != null) {
 	    StringBuffer sb = new StringBuffer("[").append(new Date().toString()).append("] - SOAP Reply:\r\n");
 	    debug.write(sb.toString().getBytes());
-	    marshaller.marshal(result, debug);
+	    synchronized(marshaller) {
+		marshaller.marshal(result, debug);
+	    }
 	    debug.write("\r\n".getBytes());
 	    debug.flush();
 	}

@@ -53,18 +53,17 @@ public enum Message {
     }
 
     /**
-     * Retrieve the default localized system logger used by the jWSMV library.
+     * Retrieve the logger used by the jWSMV library.
      */
     public static LocLogger getLogger() {
 	return sysLogger;
     }
 
     /**
-     * Retrieve/create a localized jWSMV logger with a particular name.  This is useful for passing to an IPlugin, if you
-     * want all of the plugin's log messages routed to a specific logger.
+     * Change the logger used by the jWSMV library.
      */
-    public static LocLogger getLogger(String name) {
-	return loggerFactory.getLocLogger(name);
+    public static void setLogger(LocLogger logger) {
+	sysLogger = logger;
     }
 
     /**
