@@ -257,6 +257,10 @@ public class ShellCommand extends Process implements Constants, Runnable {
 	switch(state) {
 	  case DONE:
 	    return exitCode;
+	  case ERROR:
+	    IllegalThreadStateException ex = new IllegalThreadStateException(state.toString());
+	    ex.initCause(getError());
+	    throw ex;
 	  default:
 	    throw new IllegalThreadStateException(state.toString());
 	}
