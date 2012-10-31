@@ -4,7 +4,6 @@
 package jwsmv.util;
 
 import java.util.Date;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 
 /**
@@ -31,7 +30,7 @@ public class RFC822 {
 	for (SimpleDateFormat sdf : formats) {
 	    try {
 		return sdf.parse(s).getTime();
-	    } catch (ParseException e) {
+	    } catch (Exception e) {
 	    }
 	}
 	throw new IllegalArgumentException(s);
