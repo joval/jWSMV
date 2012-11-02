@@ -95,6 +95,7 @@ public class Port implements Constants {
     private boolean encrypt;
     private OutputStream debug;
     private LocLogger logger;
+    private JAXBContext ctx;
 
     /**
      * Create a SOAP Web-Services port.
@@ -107,7 +108,7 @@ public class Port implements Constants {
      * Create a SOAP Web-Services port through an HTTP proxy.
      */
     public Port(String url, Proxy proxy, PasswordAuthentication cred) throws JAXBException {
-	JAXBContext ctx = JAXBContext.newInstance(schemaProps.getProperty("ws-man.packages"), cl);
+	ctx = JAXBContext.newInstance(schemaProps.getProperty("ws-man.packages"), cl);
 	marshaller = ctx.createMarshaller();
 	marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
 	marshaller.setProperty(Marshaller.JAXB_FRAGMENT, Boolean.TRUE);
@@ -142,6 +143,10 @@ public class Port implements Constants {
 
     public LocLogger getLogger() {
 	return logger;
+    }
+
+    public synchronized void marshal(Object obj, Node node) throws JAXBException {
+	marshaller.marshal(obj, node);
     }
 
     public synchronized Object unmarshal(Node node) throws JAXBException {

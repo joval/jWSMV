@@ -33,33 +33,61 @@ public class FaultException extends Exception {
      */
     @Override
     public String getMessage() {
-	Detail detail = fault.getDetail();
-	JAXBElement elt = (JAXBElement)detail.getAny().get(0);
-	Object obj = elt.getValue();
-	if (obj instanceof String) {
-	    return (String)obj;
-	} else if (obj instanceof WSManFaultType) {
-	    WSManFaultType wsmft = (WSManFaultType)obj;
-	    Object val = wsmft.getMessage().getContent().get(0);
-	    if (val instanceof JAXBElement) {
-		val = ((JAXBElement)val).getValue();
-	    }
-	    if (val instanceof ProviderFaultType) {
-		ProviderFaultType pft = (ProviderFaultType)val;
-		if (pft.isSetContent()) {
-		    StringBuffer sb = new StringBuffer();
-		    for (Object content : pft.getContent()) {
-			sb.append((String)content);
-		    }
-		    return sb.toString();
-		} else {
-		    return pft.getProviderId();
+	if (fault.isSetDetail() && fault.getDetail().isSetAny()) {
+	    StringBuffer sb = new StringBuffer();
+	    for (Object obj : fault.getDetail().getAny()) {
+		if (obj instanceof JAXBElement) {
+		    obj = ((JAXBElement)obj).getValue();
 		}
-	    } else {
-		return (String)val;
+		if (obj instanceof WSManFaultType) {
+		    return toString((WSManFaultType)obj);
+		} else if (obj != null) {
+		    sb.append(obj.toString());
+		}
 	    }
+	    return sb.toString();
 	} else {
-	    return obj.toString();
+	    return null;
 	}
+    }
+
+    // Private
+
+    private String toString(WSManFaultType wsmft) {
+	StringBuffer sb = new StringBuffer();
+	if (wsmft.isSetMessage() && wsmft.getMessage().isSetContent()) {
+	    for (Object obj : wsmft.getMessage().getContent()) {
+		if (obj instanceof JAXBElement) {
+		    obj = ((JAXBElement)obj).getValue();
+		}
+		if (obj instanceof ProviderFaultType) {
+		    ProviderFaultType pft = (ProviderFaultType)obj;
+		    if (pft.isSetProviderId()) {
+			sb.append("Provider: ").append(pft.getProviderId());
+		    }
+		    if (pft.isSetContent()) {
+			for (Object content : pft.getContent()) {
+			    if (content instanceof JAXBElement) {
+				content = ((JAXBElement)content).getValue();
+			    }
+			    if (content instanceof WSManFaultType) {
+				sb.append(toString((WSManFaultType)content));
+			    }
+			}
+		    }
+		} else if (obj != null) {
+		    sb.append(obj.toString().trim());
+		}
+	    }
+	}
+	if (wsmft.isSetCode()) {
+	    String code = new StringBuffer("Code: ").append(Long.toString(wsmft.getCode())).toString();
+	    if (sb.length() == 0) {
+		sb.append(code);
+	    } else if (sb.indexOf(code) == -1) {
+		sb.append(" [").append(code).append("]");
+	    }
+	}
+	return sb.toString();
     }
 }

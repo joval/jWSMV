@@ -49,4 +49,5 @@ $(BUILD)/%/:
 	mkdir -p $(subst PKG,,$@)
 
 test:
-	$(JRE) -classpath $(RUNTIMECP) jwsmv.winrs.Client -r:family-pc -u:Administrator -p:password -noe cmd.exe
+#	$(JRE) -classpath $(RUNTIMECP) jwsmv.winrs.Client -r:family-pc -u:Administrator -p:password -noe cmd.exe
+	$(JRE) -classpath $(RUNTIMECP) jwsmv.cim.Client tardis joval password

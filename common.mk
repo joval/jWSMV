@@ -25,12 +25,8 @@ SPACE:=$(NULL) # end of the line
 SHELL=/bin/sh
 CWD=$(shell pwd)
 
-ifeq (x86, $(ARCH))
-    JRE=$(JRE32_HOME)/bin/java
-else
-    JRE=$(JRE64_HOME)/bin/java
-endif
-
+JRE_HOME=$(JAVA_HOME)/jre
+JRE=$(JRE_HOME)/bin/java
 JAVA=$(JAVA_HOME)/bin/java
 JAVA_VERSION=1.6
 ifeq (1.7, $(findstring 1.7,`$(JAVA) -version`))
