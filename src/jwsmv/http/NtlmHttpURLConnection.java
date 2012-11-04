@@ -25,7 +25,9 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.StringTokenizer;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.microsoft.security.ntlm.NtlmAuthenticator;
 import org.microsoft.security.ntlm.NtlmAuthenticator.NtlmVersion;
@@ -48,10 +50,10 @@ public class NtlmHttpURLConnection extends AbstractConnection {
     private static NtlmAuthenticator.ConnectionType CO	= NtlmAuthenticator.ConnectionType.connectionOriented;
     private static long MAX_KEEPALIVE = 120000L; // 2 minutes
 
-    private static Hashtable<String, List<NtlmHttpURLConnection>> pool;
+    private static Hashtable<String, Queue<NtlmHttpURLConnection>> pool;
     private static String host = "localhost"; 
     static {
-	pool = new Hashtable<String, List<NtlmHttpURLConnection>>();
+	pool = new Hashtable<String, Queue<NtlmHttpURLConnection>>();
 	try {
 	    host = InetAddress.getLocalHost().getHostName();
 	} catch (UnknownHostException e) {
@@ -93,10 +95,9 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 	synchronized(pool) {
 	    String id = createId(url, cred, encrypt);
 	    if (pool.containsKey(id)) {
-		List<NtlmHttpURLConnection> connections = pool.get(id);
-		for (Iterator<NtlmHttpURLConnection> it = connections.iterator(); it.hasNext(); ) {
-		    NtlmHttpURLConnection conn = it.next();
-		    it.remove();
+		Queue<NtlmHttpURLConnection> connections = pool.get(id);
+		while (connections.size() > 0) {
+		    NtlmHttpURLConnection conn = connections.remove();
 		    long dormant = System.currentTimeMillis() - conn.lastUsed;
 		    if (conn.connection.connected()) {
 			if (dormant > MAX_KEEPALIVE) {
@@ -104,14 +105,13 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 			    // If it hasn't been used for longer than MAX_KEEPALIVE, kill the connection
 			    //
 			    conn.connection.disconnect();
-			    conn.disconnect();
 			} else {
 			    return conn;
 			}
 		    }
 		}
 	    } else {
-		pool.put(id, new ArrayList<NtlmHttpURLConnection>());
+		pool.put(id, new ConcurrentLinkedQueue<NtlmHttpURLConnection>());
 	    }
 	    return new NtlmHttpURLConnection(url, cred, encrypt);
 	}
