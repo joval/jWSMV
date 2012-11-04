@@ -46,6 +46,7 @@ import jwsmv.util.Base64;
 public class NtlmHttpURLConnection extends AbstractConnection {
     private static NtlmAuthenticator.NtlmVersion NTLMV2	= NtlmAuthenticator.NtlmVersion.ntlmv2;
     private static NtlmAuthenticator.ConnectionType CO	= NtlmAuthenticator.ConnectionType.connectionOriented;
+    private static long MAX_KEEPALIVE = 120000L; // 2 minutes
 
     private static Hashtable<String, List<NtlmHttpURLConnection>> pool;
     private static String host = "localhost"; 
@@ -83,6 +84,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
     private boolean negotiated;
     private ByteArrayOutputStream cachedOutput;
     private NtlmPhase phase, proxyPhase;
+    private long lastUsed;
 
     /**
      * Create a new connection, or recycle one from the pool, as appropriate.
@@ -94,11 +96,18 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 		List<NtlmHttpURLConnection> connections = pool.get(id);
 		for (Iterator<NtlmHttpURLConnection> it = connections.iterator(); it.hasNext(); ) {
 		    NtlmHttpURLConnection conn = it.next();
+		    it.remove();
+		    long dormant = System.currentTimeMillis() - conn.lastUsed;
 		    if (conn.connection.connected()) {
-			it.remove();
-			return conn;
-		    } else {
-			it.remove();
+			if (dormant > MAX_KEEPALIVE) {
+			    //
+			    // If it hasn't been used for longer than MAX_KEEPALIVE, kill the connection
+			    //
+			    conn.connection.disconnect();
+			    conn.disconnect();
+			} else {
+			    return conn;
+			}
 		    }
 		}
 	    } else {
@@ -417,6 +426,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 		}
 	    }
 	} finally {
+	    lastUsed = System.currentTimeMillis();
 	    cachedOutput = null;
 	    negotiated = true;
 	}
