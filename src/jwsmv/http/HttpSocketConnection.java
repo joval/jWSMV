@@ -245,7 +245,8 @@ public class HttpSocketConnection extends AbstractConnection {
 	    write(req.toString());
 	    write(CRLF);
 	    for (Map.Entry<String, List<String>> entry : requestProperties.entrySet()) {
-		write(new KVP(entry));
+		KVP pair = new KVP(entry);
+		write(pair);
 	    }
 	    write(CRLF);
 	}
@@ -253,6 +254,13 @@ public class HttpSocketConnection extends AbstractConnection {
     }
 
     // Internal
+
+    /**
+     * Check to determine whether the socket is connected.
+     */
+    boolean connected() {
+	return socket.isConnected();
+    }
 
     /**
      * Set a proxy.
@@ -287,6 +295,7 @@ public class HttpSocketConnection extends AbstractConnection {
 	    }
 	    stream = null;
 	}
+	responseData = null;
 	gotResponse = false;
     }
 

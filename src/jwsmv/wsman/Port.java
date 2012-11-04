@@ -247,7 +247,7 @@ public class Port implements Constants {
 		    break;
 
 		  case NTLM:
-		    conn = new NtlmHttpURLConnection(u, cred, encrypt);
+		    conn = NtlmHttpURLConnection.openConnection(u, cred, encrypt);
 		    ((NtlmHttpURLConnection)conn).setProxy(proxy);
 		    break;
 

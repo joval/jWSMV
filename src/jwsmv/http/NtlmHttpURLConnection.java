@@ -17,9 +17,12 @@ import java.net.ProtocolException;
 import java.net.Proxy;
 import java.net.UnknownHostException;
 import java.net.URL;
+import java.security.MessageDigest;
 import java.security.Permission;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -44,15 +47,36 @@ public class NtlmHttpURLConnection extends AbstractConnection {
     private static NtlmAuthenticator.NtlmVersion NTLMV2	= NtlmAuthenticator.NtlmVersion.ntlmv2;
     private static NtlmAuthenticator.ConnectionType CO	= NtlmAuthenticator.ConnectionType.connectionOriented;
 
-    private static String host = "localhost";
+    private static Hashtable<String, List<NtlmHttpURLConnection>> pool;
+    private static String host = "localhost"; 
     static {
+	pool = new Hashtable<String, List<NtlmHttpURLConnection>>();
 	try {
 	    host = InetAddress.getLocalHost().getHostName();
 	} catch (UnknownHostException e) {
 	}
     }
 
+    private static String createId(URL url, PasswordAuthentication cred, boolean encrypt) {
+	try {
+	    StringBuffer sb = new StringBuffer(new URL(url, "/").toString());
+	    if (cred != null && cred.getUserName() != null && cred.getPassword() != null) {
+		sb.append(":");
+		sb.append(cred.getUserName());
+		sb.append(":");
+		sb.append(cred.getPassword());
+	    }
+	    sb.append(":");
+	    sb.append(Boolean.toString(encrypt));
+	    return Base64.encodeBytes(MessageDigest.getInstance("MD5").digest(sb.toString().getBytes()));
+	} catch (Exception e) {
+	    throw new RuntimeException(e);
+	}
+    }
+
+    private String id;
     private HttpSocketConnection connection;
+    private PasswordAuthentication cred;
     private NtlmSession session, proxySession;
     private boolean encrypt;
     private String authProperty, authMethod;
@@ -61,26 +85,27 @@ public class NtlmHttpURLConnection extends AbstractConnection {
     private NtlmPhase phase, proxyPhase;
 
     /**
-     * Create a connection to a URL.
+     * Create a new connection, or recycle one from the pool, as appropriate.
      */
-    public NtlmHttpURLConnection(URL url) {
-	this(url, null, false);
-    }
-
-    /**
-     * Create a connection to a URL, and use the specified credentials to negotiate with the destination server.
-     */
-    public NtlmHttpURLConnection(URL url, PasswordAuthentication cred, boolean encrypt) {
-	super(url);
-	connection = new HttpSocketConnection(url);
-	if (cred == null) {
-	    phase = NtlmPhase.NA;
-	} else {
-	    session = createSession(cred, encrypt);
-	    phase = NtlmPhase.TYPE1;
-	    this.encrypt = encrypt;
+    public static NtlmHttpURLConnection openConnection(URL url, PasswordAuthentication cred, boolean encrypt) {
+	synchronized(pool) {
+	    String id = createId(url, cred, encrypt);
+	    if (pool.containsKey(id)) {
+		List<NtlmHttpURLConnection> connections = pool.get(id);
+		for (Iterator<NtlmHttpURLConnection> it = connections.iterator(); it.hasNext(); ) {
+		    NtlmHttpURLConnection conn = it.next();
+		    if (conn.connection.connected()) {
+			it.remove();
+			return conn;
+		    } else {
+			it.remove();
+		    }
+		}
+	    } else {
+		pool.put(id, new ArrayList<NtlmHttpURLConnection>());
+	    }
+	    return new NtlmHttpURLConnection(url, cred, encrypt);
 	}
-	proxyPhase = NtlmPhase.NA;
     }
 
     /**
@@ -170,9 +195,16 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 
     @Override
     public void disconnect() {
-	connection.disconnect();
-	negotiated = false;
-	connected = false;
+	if (connection.connected()) {
+	    synchronized(pool) {
+		pool.get(id).add(this);
+	    }
+	}
+	try {
+	    reset();
+	} catch (IOException e) {
+	    throw new RuntimeException(e);
+	}
     }
 
     @Override
@@ -393,6 +425,24 @@ public class NtlmHttpURLConnection extends AbstractConnection {
     // Private
 
     /**
+     * Create a connection to a URL, and use the specified credentials to negotiate with the destination server.
+     */
+    private NtlmHttpURLConnection(URL url, PasswordAuthentication cred, boolean encrypt) {
+	super(url);
+	this.cred = cred;
+	id = createId(url, cred, encrypt);
+	connection = new HttpSocketConnection(url);
+	if (cred == null) {
+	    phase = NtlmPhase.NA;
+	} else {
+	    session = createSession(cred, encrypt);
+	    phase = NtlmPhase.TYPE1;
+	    this.encrypt = encrypt;
+	}
+	proxyPhase = NtlmPhase.NA;
+    }
+
+    /**
      * REMIND (DAS): still need to implement validation of the signature.
      */
     private byte[] decrypt(InputStream in) throws IOException {
@@ -528,6 +578,14 @@ public class NtlmHttpURLConnection extends AbstractConnection {
      */
     private void reset() throws IOException {
 	drain(connection.getErrorStream());
+	if (session == null) {
+	    phase = NtlmPhase.NA;
+	} else {
+	    session = createSession(cred, encrypt);
+	    phase = NtlmPhase.TYPE1;
+	}
+	negotiated = false;
+
 	Map<String, List<String>> map = connection.getRequestProperties();
 	connection.reset();
 	connected = false;
