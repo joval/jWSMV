@@ -224,6 +224,7 @@
 
 <!--  The following element is to be used only for defining metadata -->
   <xs:element name="DefaultValue" type="xs:anySimpleType" />
+  <xs:element name="Datetime" type="xs:dateTime" />
 
 </xs:schema>
 
