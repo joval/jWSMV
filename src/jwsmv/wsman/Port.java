@@ -325,10 +325,10 @@ public class Port implements Constants {
 	    }
 	} while (retry && nextAuthScheme(conn));
 
-	logger.debug(Message.STATUS_RESPONSE, result == null ? "null" : result.getClass().getName());
 	if (result instanceof JAXBElement) {
 	    result = ((JAXBElement)result).getValue();
 	}
+	logger.debug(Message.STATUS_RESPONSE, result == null ? "null" : result.getClass().getName());
 	if (result instanceof Fault) {
 	    throw new FaultException((Fault)result);
 	} else {
