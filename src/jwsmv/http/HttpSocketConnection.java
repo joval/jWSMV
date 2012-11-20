@@ -259,7 +259,7 @@ public class HttpSocketConnection extends AbstractConnection {
      * Check to determine whether the socket is connected.
      */
     boolean connected() {
-	return socket.isConnected();
+	return socket != null && socket.isConnected();
     }
 
     /**

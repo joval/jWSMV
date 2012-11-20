@@ -402,9 +402,15 @@ public class ShellCommand extends Process implements Constants, Runnable {
 		signalOperation.addResourceURI(SHELL_URI);
 		signalOperation.addSelectorSet(selector);
 		SignalResponse response = signalOperation.dispatch(port);
-		stderrPipe.close();
+		try {
+		    stdoutPipe.close();
+		} catch (IOException e) {
+		}
+		try {
+		    stderrPipe.close();
+		} catch (IOException e) {
+		}
 	    } catch (Exception e) {
-		e.printStackTrace();
 	    }
 	    disposable = false;
 	}
