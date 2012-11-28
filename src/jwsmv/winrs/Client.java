@@ -36,7 +36,9 @@ public class Client implements Constants {
 	String dir = "%WINDIR%";
 	String user = null;
 	String pass = null;
+	String debugFile = null;
 	boolean encrypt = true;
+	boolean compress = false;
 	boolean echo = true;
 	ArrayList<String> env = null;
 
@@ -54,6 +56,8 @@ public class Client implements Constants {
 		host = arg.substring(ptr+1);
 	    } else if (arg.equals("un") || arg.equals("unencrypted")) {
 		encrypt = false;
+	    } else if (arg.equals("comp") || arg.equals("unencrypted")) {
+		compress = true;
 	    } else if (arg.equals("noe") || arg.equals("noecho")) {
 		echo = false;
 	    } else if (arg.startsWith("u:") || arg.startsWith("username:")) {
@@ -62,6 +66,8 @@ public class Client implements Constants {
 		pass = arg.substring(ptr+1);
 	    } else if (arg.startsWith("d:") || arg.startsWith("directory:")) {
 		dir = arg.substring(ptr+1);
+	    } else if (arg.equals("-debug") && (index+1) < argv.length) {
+		debugFile = argv[++index];
 	    } else if (arg.startsWith("env:") || arg.startsWith("environment:")) {
 		if (env == null) {
 		    env = new ArrayList<String>();
@@ -109,14 +115,20 @@ public class Client implements Constants {
 		sb.append(URL_PREFIX);
 		url = sb.toString();
 	    }
+	    OutputStream debug = null;
 	    try {
 		Port port = new Port(url, null, new PasswordAuthentication(user, pass.toCharArray()));
+		if (debugFile != null) {
+		    debug = new FileOutputStream(debugFile);
+		    port.setDebug(debug);
+		}
 		port.setEncryption(encrypt);
 		String[] environment = null;
 		if (env != null) {
 		    environment = env.toArray(new String[env.size()]);
 		}
-		Shell shell = new Shell(port, environment, dir);
+
+		Shell shell = new Shell(port, compress, environment, dir);
 		Process p = shell.exec(command);
 
 		InputStream in = p.getInputStream();
@@ -149,6 +161,13 @@ public class Client implements Constants {
 	    } catch (Exception e) {
 		e.printStackTrace();
 		System.exit(1);
+	    } finally {
+		if(debug != null) {
+		    try {
+			debug.close();
+		    } catch (IOException e) {
+		    }
+		}
 	    }
 	}
     }
@@ -158,6 +177,7 @@ public class Client implements Constants {
 	System.out.println("  COMMAND - Any string that can be executed as a command in the cmd.exe shell");
 	System.out.println("  SWITCHES:");
 	System.out.println("    -r[emote]:ENDPOINT           - The target endpoint using a DNS name or URL");
+	System.out.println("    -comp[ress]                  - Turn on compression.");
 	System.out.println("    -un[encrypted]               - Specify that messages sent to the target");
 	System.out.println("                                   should not be encrypted");
 	System.out.println("    -u[sername]:USERNAME         - The username for connecting to the target");
@@ -166,6 +186,7 @@ public class Client implements Constants {
 	System.out.println("    -env[ironment]:STRING=VALUE  - Set an environment variable. Use multiple");
 	System.out.println("                                   times to set multiple variables.");
 	System.out.println("    -noe[cho]                    - Disable echo");
+	System.out.println("    -debug FILENAME              - Write SOAP messages to the specified file.");
 	System.out.println("    -?                           - Print this help message");
     }
 

@@ -39,9 +39,8 @@ abstract class BaseOperation<I, O> implements IOperation<I, O>, Constants {
 	headers = new Vector<Object>();
     }
 
-
-    public void addOptionSet(OptionSet options) {
-	headers.add(options);
+    public void addHeader(Object obj) {
+	headers.add(obj);
     }
 
     public void addSelectorSet(SelectorSetType selectors) {

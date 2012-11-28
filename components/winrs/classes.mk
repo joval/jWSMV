@@ -8,6 +8,7 @@ CLASSES=\
 	jwsmv.ShellCommand	\
 	jwsmv.util.Base64	\
 	jwsmv.util.RFC822	\
+	jwsmv.util.Xpress	\
 	jwsmv.winrs.Client	\
 	jwsmv.wsman.FaultException	\
 	jwsmv.wsman.operation.BaseOperation	\

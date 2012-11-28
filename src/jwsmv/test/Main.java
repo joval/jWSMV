@@ -300,7 +300,7 @@ public class Client implements Constants {
 	option4.setName("IgnoreChannelError");
 	option4.getOtherAttributes().put(NIL, "true");
 	options.getOption().add(option4);
-	operation.addOptionSet(options);
+	operation.addHeader(options);
 
 	SubscribeResponse response = operation.dispatch(port);
     }

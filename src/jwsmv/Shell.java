@@ -16,6 +16,7 @@ import com.microsoft.wsman.config.ConfigType;
 import com.microsoft.wsman.config.ServiceType;
 import com.microsoft.wsman.shell.CommandLine;
 import com.microsoft.wsman.shell.CommandResponse;
+import com.microsoft.wsman.shell.CompressionType;
 import com.microsoft.wsman.shell.EnvironmentVariable;
 import com.microsoft.wsman.shell.EnvironmentVariableList;
 import com.microsoft.wsman.shell.ShellType;
@@ -51,6 +52,11 @@ import jwsmv.wsman.operation.PullOperation;
  * @version %I% %G%
  */
 public class Shell implements Constants {
+    /**
+     * Signifies MS-XCA compression.
+     */
+    public static final String COMPRESSION_ALGORITHM = "xpress";
+
     public static final String STDOUT	= "stdout";
     public static final String STDERR	= "stderr";
     public static final String STDIN	= "stdin";
@@ -150,14 +156,16 @@ public class Shell implements Constants {
 
     ThreadGroup group;
     Port port;
+    boolean compress = false;
 
     /**
      * Create a new Shell on the specified port, with the specified environment, in the specified directory.
      */
-    public Shell(Port port, String[] env, String cwd)
+    public Shell(Port port, boolean compress, String[] env, String cwd)
 		throws JAXBException, IOException, IllegalArgumentException, FaultException, FailedLoginException {
 
 	this.port = port;
+	this.compress = compress;
 	processes = new HashMap<String, ShellCommand>();
 
 	//
@@ -218,7 +226,13 @@ public class Shell implements Constants {
 	OptionSet options = Factories.WSMAN.createOptionSet();
 	options.getOption().add(winrsNoProfile);
 	options.getOption().add(winrsCodepage);
-	createOperation.addOptionSet(options);
+	createOperation.addHeader(options);
+	if (compress) {
+	    CompressionType compressionType = Factories.SHELL.createCompressionType();
+	    compressionType.setMustUnderstand(true);
+	    compressionType.setValue(COMPRESSION_ALGORITHM);
+	    createOperation.addHeader(compressionType);
+	}
 
 	//
 	// Dispatch the call to the target, and get the ID of the new shell.

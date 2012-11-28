@@ -33,6 +33,7 @@ import org.dmtf.wsman.SelectorSetType;
 import org.dmtf.wsman.SelectorType;
 import org.w3c.soap.envelope.Fault;
 
+import jwsmv.util.Xpress;
 import jwsmv.wsman.FaultException;
 import jwsmv.wsman.Port;
 import jwsmv.wsman.operation.CommandOperation;
@@ -126,7 +127,7 @@ public class ShellCommand extends Process implements Constants, Runnable {
     public void waitFor(long millis) throws InterruptedException {
 	long endTime = System.currentTimeMillis() + millis;
 	while (isRunning() && System.currentTimeMillis() < endTime) {
-	    Thread.sleep(100);
+	    Thread.sleep(25);
 	}
 	long maxWait = endTime - System.currentTimeMillis();
 	if (maxWait > 0) {
@@ -199,7 +200,7 @@ public class ShellCommand extends Process implements Constants, Runnable {
 	OptionSet options = Factories.WSMAN.createOptionSet();
 	options.getOption().add(winrsStdin);
 	options.getOption().add(winrsSkipCmd);
-	commandOperation.addOptionSet(options);
+	commandOperation.addHeader(options);
 
 	try {
 	    CommandResponse response = commandOperation.dispatch(port);
@@ -288,13 +289,19 @@ public class ShellCommand extends Process implements Constants, Runnable {
 		keepAlive.setValue("TRUE");
 		OptionSet options = Factories.WSMAN.createOptionSet();
 		options.getOption().add(keepAlive);
-		receiveOperation.addOptionSet(options);
+		receiveOperation.addHeader(options);
 
 		ReceiveResponse response = receiveOperation.dispatch(port);
 		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 		for (StreamType stream : response.getStream()) {
 		    if (stream.isSetValue()) {
-			byte[] val = stream.getValue();
+			byte[] val = null;
+			if (compress) {
+System.out.println("DAS decode");
+			    val = codec.decode(stream.getValue());
+			} else {
+			    val = stream.getValue();
+			}
 			if (val.length > 0) {
 			    String streamName = stream.getName();
 			    if (Shell.STDOUT.equals(streamName)) {
@@ -357,6 +364,8 @@ public class ShellCommand extends Process implements Constants, Runnable {
     // Internal
 
     private Port port;
+    private boolean compress;
+    private Xpress codec;
     private String id;
     private SelectorSetType selector;
     private State state;
@@ -377,7 +386,11 @@ public class ShellCommand extends Process implements Constants, Runnable {
     ShellCommand(Shell shell, String cmd, String[] args) {
 	selector = shell.getSelectorSet();
 	group = shell.group;
-	this.port = shell.port;
+	compress = shell.compress;
+	if (compress) {
+	    codec = new Xpress();
+	}
+	port = shell.port;
 	this.cmd = cmd;
 	this.args = args;
 	stdin = null;
@@ -430,7 +443,12 @@ public class ShellCommand extends Process implements Constants, Runnable {
 		StreamType stream = Factories.SHELL.createStreamType();
 		stream.setName(Shell.STDIN);
 		stream.setCommandId(id);
-		stream.setValue(toByteArray());
+		if (compress) {
+System.out.println("DAS encode");
+		    stream.setValue(codec.encode(toByteArray()));
+		} else {
+		    stream.setValue(toByteArray());
+		}
 		reset();
 		Send send = Factories.SHELL.createSend();
 		send.getStream().add(stream);
