@@ -12,8 +12,6 @@ import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.security.auth.login.FailedLoginException;
 
-import com.microsoft.wsman.config.ConfigType;
-import com.microsoft.wsman.config.ServiceType;
 import com.microsoft.wsman.shell.CommandLine;
 import com.microsoft.wsman.shell.CommandResponse;
 import com.microsoft.wsman.shell.CompressionType;
@@ -34,7 +32,6 @@ import org.xmlsoap.ws.enumeration.EnumerateResponse;
 import org.xmlsoap.ws.enumeration.EnumerationContextType;
 import org.xmlsoap.ws.enumeration.Pull;
 import org.xmlsoap.ws.enumeration.PullResponse;
-import org.xmlsoap.ws.transfer.AnyXmlOptionalType;
 import org.xmlsoap.ws.transfer.AnyXmlType;
 
 import jwsmv.wsman.FaultException;
@@ -42,7 +39,6 @@ import jwsmv.wsman.Port;
 import jwsmv.wsman.operation.CreateOperation;
 import jwsmv.wsman.operation.DeleteOperation;
 import jwsmv.wsman.operation.EnumerateOperation;
-import jwsmv.wsman.operation.GetOperation;
 import jwsmv.wsman.operation.PullOperation;
 
 /**
@@ -52,6 +48,8 @@ import jwsmv.wsman.operation.PullOperation;
  * @version %I% %G%
  */
 public class Shell implements Constants {
+    public static final String DEFAULT_CODEPAGE = "437";
+
     /**
      * Signifies MS-XCA compression.
      */
@@ -153,15 +151,30 @@ public class Shell implements Constants {
     private String id;
     private boolean disposed = false;
     private HashMap<String, ShellCommand> processes;
+    private Thread shutdownHook;
 
     ThreadGroup group;
     Port port;
     boolean compress = false;
 
     /**
-     * Create a new Shell on the specified port, with the specified environment, in the specified directory.
+     * Create a new Shell.
+     *
+     * @see http://en.wikipedia.org/wiki/Code_page_437
+     *
+     * @param port      The web service port through which the WS-Management/Transfer Create request will be dispatched.
+     * @param compress  Enable Xpress compression (currently non-functional)
+     * @param codepage  The value of the options specifies the client's console output code page. The value is returned
+     *                  by GetConsoleOutputCP API; on the server side, this value is set as input and output code page
+     *                  to display the number of the active character set (code page) or to change the active character set.
+     *                  If null, the DEFAULT_CODEPAGE value "437" will be used.
+     * @param noProfile If set to TRUE, this option specifies that the user profile does not exist on the remote system
+     *                  and that the default profile SHOULD be used. By default, the value should be TRUE.
+     * @param env       The desired Shell environment. Leave null for the default user environment.
+     * @param cwd       The desired Shell working directory. If null the shell will start in the user's home directory,
+     *                  or %SystemRoot% if noProfile is set to true.
      */
-    public Shell(Port port, boolean compress, String[] env, String cwd)
+    public Shell(Port port, boolean compress, boolean noProfile, String codepage, String[] env, String cwd)
 		throws JAXBException, IOException, IllegalArgumentException, FaultException, FailedLoginException {
 
 	this.port = port;
@@ -204,24 +217,13 @@ public class Shell implements Constants {
 	createOperation.addResourceURI(SHELL_URI);
 	createOperation.setTimeout(60000);
 
-	//
-	// If set to TRUE, this option specifies that the user profile does not exist on the remote system
-	// and that the default profile SHOULD be used. By default, the value is TRUE.
-	//
 	OptionType winrsNoProfile = Factories.WSMAN.createOptionType();
 	winrsNoProfile.setName("WINRS_NOPROFILE");
-	winrsNoProfile.setValue("TRUE");
+	winrsNoProfile.setValue(noProfile ? "TRUE" : "FALSE");
 
-	//
-	// The value of the options specifies the client's console output code page. The value is returned
-	// by GetConsoleOutputCP API; on the server side, this value is set as input and output code page
-	// to display the number of the active character set (code page) or to change the active character set.
-	//
-	// @see http://en.wikipedia.org/wiki/Code_page_437
-	//
 	OptionType winrsCodepage = Factories.WSMAN.createOptionType();
 	winrsCodepage.setName("WINRS_CODEPAGE");
-	winrsCodepage.setValue("437");
+	winrsCodepage.setValue(codepage == null ? DEFAULT_CODEPAGE : codepage);
 
 	OptionSet options = Factories.WSMAN.createOptionSet();
 	options.getOption().add(winrsNoProfile);
@@ -254,6 +256,8 @@ public class Shell implements Constants {
 		}
 		if (id != null) break;
 	    }
+	    shutdownHook = new ShutdownHook();
+	    Runtime.getRuntime().addShutdownHook(shutdownHook);
 	}
     }
 
@@ -267,25 +271,12 @@ public class Shell implements Constants {
     /**
      * Closes the remote Shell instance (idempotent).
      */
-    public void dispose() {
-	finalize();
-    }
-
-    /**
-     * Return the maximum number of concurrent operations permitted by the server for the port's user account.
-     */
-    public int getMaxUserProcesses() throws JAXBException, IOException, FaultException {
-	try {
-	    AnyXmlOptionalType arg = Factories.TRANSFER.createAnyXmlOptionalType();
-	    GetOperation operation = new GetOperation(arg);
-	    operation.addResourceURI(CONFIG_URI);
-	    AnyXmlType any = (AnyXmlType)operation.dispatch(port);
-	    ConfigType config = (ConfigType)any.getAny();
-	    ServiceType service = config.getService();
-	    return service.getMaxConcurrentOperationsPerUser().intValue();
-	} catch (FailedLoginException e) {
-	    throw new RuntimeException(e);
+    public synchronized void dispose() {
+	if (shutdownHook != null) {
+	    Runtime.getRuntime().removeShutdownHook(shutdownHook);
+	    shutdownHook = null;
 	}
+	finalize();
     }
 
     /**
@@ -351,12 +342,12 @@ public class Shell implements Constants {
      * Closes the remote Shell instance (idempotent).
      */
     @Override
-    protected void finalize() {
-	for (ShellCommand process : processes.values()) {
-	    process.finalize();
-	}
+    protected synchronized void finalize() {
 	if (!disposed) {
 	    try {
+		for (ShellCommand process : processes.values()) {
+		    process.finalize();
+		}
 		DeleteOperation deleteOperation = new DeleteOperation();
 		deleteOperation.addResourceURI(SHELL_URI);
 		SelectorSetType set = Factories.WSMAN.createSelectorSetType();
@@ -366,9 +357,10 @@ public class Shell implements Constants {
 		set.getSelector().add(sel);
 		deleteOperation.addSelectorSet(set);
 		deleteOperation.dispatch(port);
-		disposed = true;
 	    } catch (Exception e) {
 		e.printStackTrace();
+	    } finally {
+		disposed = true;
 	    }
 	}
     }
@@ -388,6 +380,24 @@ public class Shell implements Constants {
 	this.id = id;
 	group = new ThreadGroup("Shell:" + id);
 	processes = new HashMap<String, ShellCommand>();
+    }
+
+    /**
+     * A shutdown hook for terminating the Shell in case of an unexpected JVM exit.
+     */
+    class ShutdownHook extends Thread {
+	ShutdownHook() {
+	    super();
+	}
+
+	public void run() {
+	    try {
+		System.err.println("Running shutdown hook for Shell " + Shell.this.getId());
+		finalize();
+	    } catch (Throwable t) {
+		t.printStackTrace();
+	    }
+	}
     }
 
     /**

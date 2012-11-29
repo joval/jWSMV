@@ -205,7 +205,7 @@ public class ShellCommand extends Process implements Constants, Runnable {
 	try {
 	    CommandResponse response = commandOperation.dispatch(port);
 	    state = State.RUNNING;
-	    disposable = true;
+	    disposed = false;
 	    id = response.getCommandId();
 	    stdoutPipe = new PipedOutputStream();
 	    stdout = new PipedInputStream(stdoutPipe);
@@ -375,7 +375,7 @@ System.out.println("DAS decode");
     private OutputStream stdin;
     private String cmd;
     private String[] args;
-    private boolean disposable;
+    private boolean disposed;
     private Exception error;
     private ThreadGroup group;
     private Thread thread;
@@ -397,16 +397,16 @@ System.out.println("DAS decode");
 	stderr = null;
 	stdout = null;
 	exitCode = -1;
-	disposable = false;
 	state = State.PENDING;
+	disposed = false;
     }
 
     /**
      * Delete the ShellCommand on the target machine (idempotent).
      */
     @Override
-    protected void finalize() {
-	if (disposable) {
+    protected synchronized void finalize() {
+	if (state != State.PENDING && !disposed) {
 	    try {
 		Signal signal = Factories.SHELL.createSignal();
 		signal.setCommandId(id);
@@ -424,8 +424,9 @@ System.out.println("DAS decode");
 		} catch (IOException e) {
 		}
 	    } catch (Exception e) {
+	    } finally {
+		disposed = true;
 	    }
-	    disposable = false;
 	}
     }
 
