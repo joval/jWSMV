@@ -37,7 +37,6 @@ import org.w3c.dom.Node;
 import org.slf4j.cal10n.LocLogger;
 import net.sourceforge.spnego.SpnegoHttpURLConnection;
 
-import org.dmtf.wsman.MaxEnvelopeSizeType;
 import org.dmtf.wsman.Locale;
 import org.xmlsoap.ws.addressing.AttributedURI;
 import org.xmlsoap.ws.addressing.EndpointReferenceType;
@@ -182,11 +181,6 @@ public class Port implements Constants {
 	for (Object obj : headers) {
 	    header.getAny().add(obj);
 	}
-
-	MaxEnvelopeSizeType size = Factories.WSMAN.createMaxEnvelopeSizeType();
-	size.setValue(BigInteger.valueOf(153600));
-	size.getOtherAttributes().put(MUST_UNDERSTAND, "true");
-	header.getAny().add(Factories.WSMAN.createMaxEnvelopeSize(size));
 
 	Locale locale = Factories.WSMAN.createLocale();
 	locale.setLang("en-US");

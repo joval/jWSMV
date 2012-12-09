@@ -66,7 +66,7 @@ public class Client implements Constants {
 		pass = arg.substring(ptr+1);
 	    } else if (arg.startsWith("d:") || arg.startsWith("directory:")) {
 		dir = arg.substring(ptr+1);
-	    } else if (arg.equals("-debug") && (index+1) < argv.length) {
+	    } else if (arg.equals("debug") && (index+1) < argv.length) {
 		debugFile = argv[++index];
 	    } else if (arg.startsWith("env:") || arg.startsWith("environment:")) {
 		if (env == null) {
@@ -128,7 +128,7 @@ public class Client implements Constants {
 		    environment = env.toArray(new String[env.size()]);
 		}
 
-		Shell shell = new Shell(port, compress, environment, dir);
+		Shell shell = new Shell(port, compress, false, null, environment, dir);
 		Process p = shell.exec(command);
 
 		InputStream in = p.getInputStream();

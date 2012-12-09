@@ -48,7 +48,17 @@ import jwsmv.wsman.operation.PullOperation;
  * @version %I% %G%
  */
 public class Shell implements Constants {
-    public static final String DEFAULT_CODEPAGE = "437";
+    /**
+     * Default codepage ID.
+     *
+     * @see http://msdn.microsoft.com/en-us/library/dd317756%28v=vs.85%29.aspx
+     */
+    public static final String IBM437_CODEPAGE	= "437";
+
+    /**
+     * Default codepage ID for UTF-8.
+     */
+    public static final String UTF8_CODEPAGE	= "65001";
 
     /**
      * Signifies MS-XCA compression.
@@ -167,7 +177,7 @@ public class Shell implements Constants {
      * @param codepage  The value of the options specifies the client's console output code page. The value is returned
      *                  by GetConsoleOutputCP API; on the server side, this value is set as input and output code page
      *                  to display the number of the active character set (code page) or to change the active character set.
-     *                  If null, the DEFAULT_CODEPAGE value "437" will be used.
+     *                  If null, the IBM437_CODEPAGE value "437" will be used.
      * @param noProfile If set to TRUE, this option specifies that the user profile does not exist on the remote system
      *                  and that the default profile SHOULD be used. By default, the value should be TRUE.
      * @param env       The desired Shell environment. Leave null for the default user environment.
@@ -223,7 +233,7 @@ public class Shell implements Constants {
 
 	OptionType winrsCodepage = Factories.WSMAN.createOptionType();
 	winrsCodepage.setName("WINRS_CODEPAGE");
-	winrsCodepage.setValue(codepage == null ? DEFAULT_CODEPAGE : codepage);
+	winrsCodepage.setValue(codepage == null ? IBM437_CODEPAGE : codepage);
 
 	OptionSet options = Factories.WSMAN.createOptionSet();
 	options.getOption().add(winrsNoProfile);
