@@ -31,11 +31,9 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.transform.dom.DOMSource;
-import org.ietf.jgss.GSSException;
 import org.w3c.dom.Node;
 
 import org.slf4j.cal10n.LocLogger;
-import net.sourceforge.spnego.SpnegoHttpURLConnection;
 
 import org.dmtf.wsman.Locale;
 import org.xmlsoap.ws.addressing.AttributedURI;
@@ -50,6 +48,7 @@ import org.w3c.soap.envelope.Header;
 import jwsmv.Constants;
 import jwsmv.Message;
 import jwsmv.http.HttpSocketConnection;
+import jwsmv.http.KerberosHttpURLConnection;
 import jwsmv.http.NtlmHttpURLConnection;
 import jwsmv.util.Base64;
 
@@ -209,7 +208,6 @@ public class Port implements Constants {
 	boolean retry = false;
 	Object result = null;
 	HttpURLConnection conn = null;
-	SpnegoHttpURLConnection spnego = null;
 	do {
 	    try {
 		if (conn != null) {
@@ -227,17 +225,8 @@ public class Port implements Constants {
 		    break;
 
 		  case KERBEROS:
-		    System.setProperty("java.security.krb5.conf", "krb5.conf");
-		    System.setProperty("sun.security.krb5.debug", Boolean.toString(debug != null));
-		    System.setProperty("java.security.auth.login.config", "login.conf");
-		    System.setProperty("javax.security.auth.useSubjectCredsOnly", "false");
-		    String pass = new String(cred.getPassword());
-		    spnego = new SpnegoHttpURLConnection("com.sun.security.jgss.krb5.initiate", cred.getUserName(), pass);
-		    if (proxy == null) {
-			conn = spnego.connect(u);
-		    } else {
-			conn = spnego.connect(u, proxy);
-		    }
+		    conn = KerberosHttpURLConnection.openConnection(u, cred, encrypt);
+		    ((KerberosHttpURLConnection)conn).setProxy(proxy);
 		    break;
 
 		  case NTLM:
@@ -303,18 +292,9 @@ public class Port implements Constants {
 		    debug(conn);
 		    break;
 		}
-	    } catch (GSSException e) {
-		e.printStackTrace();
-	    } catch (LoginException e) {
-		e.printStackTrace();
-	    } catch (PrivilegedActionException e) {
-		e.printStackTrace();
 	    } finally {
 		if (conn != null) {
 		    conn.disconnect();
-		}
-		if (spnego != null) {
-		    spnego.disconnect();
 		}
 	    }
 	} while (retry && nextAuthScheme(conn));
