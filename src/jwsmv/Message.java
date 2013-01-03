@@ -60,6 +60,13 @@ public enum Message {
     }
 
     /**
+     * Get the IMessageConveyor that provides localized messages for jWSMV.
+     */
+    public static IMessageConveyor getConveyor() {
+	return mc;
+    }
+
+    /**
      * Change the logger used by the jWSMV library.
      */
     public static void setLogger(LocLogger logger) {
@@ -67,7 +74,7 @@ public enum Message {
     }
 
     /**
-     * Retrieve a localized String, given the key and substitution arguments.
+     * Retrieve a localized String, given the key and substitution arguments. Convenience message for getConveyor.getMessage.
      */
     public static String getMessage(Message key, Object... args) {
 	return mc.getMessage(key, args);
