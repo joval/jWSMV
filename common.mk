@@ -45,7 +45,7 @@ DOCS=docs/api
 SRC=$(TOP)/src
 COMPONENTS=$(TOP)/components
 LIBDIR=$(RSRC)/lib
-LIB=$(subst $(SPACE),$(CLN),$(filter %.jar %.zip, $(wildcard $(LIBDIR)/*)))
+LIBS=$(subst $(SPACE),$(CLN),$(filter %.jar %.zip, $(wildcard $(LIBDIR)/*)))
 
 WSMAN=$(COMPONENTS)/ws-man
 WSMAN_LIB=$(WSMAN)/ws-man.jar

@@ -14,6 +14,8 @@ import org.w3c.dom.NodeList;
 
 import org.dmtf.wsman.AttributableDuration;
 import org.dmtf.wsman.AttributableURI;
+import org.dmtf.wsman.OptionSet;
+import org.dmtf.wsman.OptionType;
 
 import jwsmv.Constants;
 import jwsmv.wsman.FaultException;
@@ -55,13 +57,35 @@ public class StdRegProv implements Constants {
 
     private Port port;
     private Document doc;
+    private String arch = null;
 
     /**
-     * Create a new Registry, connected to the specified view.
+     * Create a new Registry, using the default provider architecture.
      */
     public StdRegProv(Port port) {
 	this.port = port;
 	doc = BUILDER.newDocument();
+    }
+
+    /**
+     * Create a new Registry
+     *
+     * @param view Use 32 or 64.
+     */
+    public StdRegProv(Port port, int view) throws IllegalArgumentException {
+	this(port);
+	switch(view) {
+	  case 32:
+	    arch = "32";
+	    break;
+
+	  case 64:
+	    arch = "64";
+	    break;
+
+	  default:
+	    throw new IllegalArgumentException(Integer.toString(view));
+	}
     }
 
     /**
@@ -485,6 +509,18 @@ public class StdRegProv implements Constants {
 	uri.setValue(CLASS_URI);
 	uri.getOtherAttributes().put(MUST_UNDERSTAND, "true");
 	headers.add(Factories.WSMAN.createResourceURI(uri));
+
+	//
+	// Set the appropriate provider architecture using an OptionSet, if one was specified.
+	//
+	if (arch != null) {
+	    OptionType architecture = Factories.WSMAN.createOptionType();
+	    architecture.setName("__ProviderArchitecture");
+	    architecture.setValue(arch);
+	    OptionSet options = Factories.WSMAN.createOptionSet();
+	    options.getOption().add(architecture);
+	    headers.add(options);
+	}
 
 	AttributableDuration duration = Factories.WSMAN.createAttributableDuration();
 	duration.setValue(Factories.XMLDT.newDuration(60000));

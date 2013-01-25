@@ -5,8 +5,8 @@ TOP=../..
 
 include $(TOP)/common.mk
 
-CLASSPATH="$(CLASSLIB)$(CLN)$(LIB)$(CLN)$(WSMAN_LIB)$(CLN)$(SRC)"
-RUNTIMECP="$(CLASSLIB)$(CLN)$(LIB)$(CLN)$(WSMAN_LIB)$(CLN)$(WSMV_LIB)"
+CLASSPATH="$(CLASSLIB)$(CLN)$(LIBS)$(CLN)$(WSMAN_LIB)$(CLN)$(SRC)"
+RUNTIMECP="$(CLASSLIB)$(CLN)$(LIBS)$(CLN)$(WSMAN_LIB)$(CLN)$(WSMV_LIB)"
 
 include classes.mk
 
@@ -29,7 +29,8 @@ dist-clean: clean
 dist: all
 	mkdir -p $(DIST)
 	cp -R $(RSRC)/bin/$(PLATFORM)/* $(DIST)
-	cp -R $(RSRC)/licenses $(DIST)
+	cp -R $(TOP)/LICENSE.txt $(DIST)
+	cp -R $(TOP)/licenses $(DIST)
 	cp -R $(RSRC)/lib $(DIST)
 	cp $(WSMV_LIB) $(DIST)/lib
 	cp $(WSMAN_LIB) $(DIST)/lib
@@ -49,5 +50,5 @@ $(BUILD)/%/:
 	mkdir -p $(subst PKG,,$@)
 
 test:
-	$(JRE) -classpath $(RUNTIMECP) jwsmv.winrs.Client -r:localhost -u:joval -p:password -debug port.log -noe set
-#	$(JRE) -classpath $(RUNTIMECP) jwsmv.cim.Client localhost joval password enc
+#	$(JRE) -classpath $(RUNTIMECP) jwsmv.winrs.Client -r:localhost -u:joval -p:password -debug port.log -noe set
+	$(JRE) -classpath $(RUNTIMECP) jwsmv.cim.Client localhost joval password enc 32

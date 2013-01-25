@@ -67,13 +67,6 @@ public enum Message {
     }
 
     /**
-     * Change the logger used by the jWSMV library.
-     */
-    public static void setLogger(LocLogger logger) {
-	sysLogger = logger;
-    }
-
-    /**
      * Retrieve a localized String, given the key and substitution arguments. Convenience message for getConveyor.getMessage.
      */
     public static String getMessage(Message key, Object... args) {
