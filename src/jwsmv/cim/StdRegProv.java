@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.DocumentBuilder;
 import org.w3c.dom.Document;
@@ -68,10 +69,13 @@ public class StdRegProv implements Constants {
     }
 
     /**
-     * Create a new Registry
+     * Create a new Registry using the specified provider architecture.
      *
      * @param view Use 32 or 64.
-     */
+//
+// DAS: One cannot select the provider architecture via MS-WSMV, on account of Microsoft internal defect
+//      ID #SR112120710065406, so for now, I have commented out this constructor.
+//
     public StdRegProv(Port port, int view) throws IllegalArgumentException {
 	this(port);
 	switch(view) {
@@ -87,6 +91,7 @@ public class StdRegProv implements Constants {
 	    throw new IllegalArgumentException(Integer.toString(view));
 	}
     }
+     */
 
     /**
      * List all the subkeys under a registry key.
@@ -514,12 +519,14 @@ public class StdRegProv implements Constants {
 	// Set the appropriate provider architecture using an OptionSet, if one was specified.
 	//
 	if (arch != null) {
-	    OptionType architecture = Factories.WSMAN.createOptionType();
-	    architecture.setName("__ProviderArchitecture");
-	    architecture.setValue(arch);
 	    OptionSet options = Factories.WSMAN.createOptionSet();
-	    options.getOption().add(architecture);
 	    headers.add(options);
+
+	    OptionType architecture = Factories.WSMAN.createOptionType();
+	    architecture.setName("wmi:__ProviderArchitecture");
+	    architecture.setType(new QName(XMLNS, "int"));
+	    architecture.setValue(arch);
+	    options.getOption().add(architecture);
 	}
 
 	AttributableDuration duration = Factories.WSMAN.createAttributableDuration();
