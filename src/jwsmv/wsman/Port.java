@@ -64,11 +64,15 @@ import jwsmv.util.Base64;
  * @version %I% %G%
  */
 public class Port implements Constants {
+    private final static String RESOURCE = "ws-man.properties";
+
     private static ClassLoader cl = Port.class.getClassLoader();
     private static Properties schemaProps = new Properties();
     static {
-	InputStream rsc = cl.getResourceAsStream("ws-man.properties");
-	if (rsc != null) {
+	InputStream rsc = cl.getResourceAsStream(RESOURCE);
+	if (rsc == null) {
+	    Message.getLogger().warn(Message.ERROR_MISSING_RESOURCE, RESOURCE);
+	} else {
 	    try {
 		schemaProps.load(rsc);
 	    } catch (IOException e) {
