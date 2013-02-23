@@ -64,19 +64,20 @@ import jwsmv.util.Base64;
  * @version %I% %G%
  */
 public class Port implements Constants {
-    private final static String RESOURCE = "ws-man.properties";
-
-    private static ClassLoader cl = Port.class.getClassLoader();
-    private static Properties schemaProps = new Properties();
+    private static final String RESOURCE = "ws-man.properties";
+    private static final JAXBContext JAXB;
     static {
+	ClassLoader cl = Port.class.getClassLoader();
+	Properties props = new Properties();
 	InputStream rsc = cl.getResourceAsStream(RESOURCE);
 	if (rsc == null) {
-	    Message.getLogger().warn(Message.ERROR_MISSING_RESOURCE, RESOURCE);
+	    throw new RuntimeException(Message.getMessage(Message.ERROR_MISSING_RESOURCE, RESOURCE));
 	} else {
 	    try {
-		schemaProps.load(rsc);
-	    } catch (IOException e) {
-		e.printStackTrace();
+		props.load(rsc);
+		JAXB = JAXBContext.newInstance(props.getProperty("ws-man.packages"), cl);
+	    } catch (Exception e) {
+		throw new RuntimeException(e);
 	    }
 	}
     }
@@ -97,7 +98,6 @@ public class Port implements Constants {
     private boolean encrypt;
     private OutputStream debug;
     private LocLogger logger;
-    private JAXBContext ctx;
 
     /**
      * Create a SOAP Web-Services port.
@@ -110,14 +110,12 @@ public class Port implements Constants {
      * Create a SOAP Web-Services port through an HTTP proxy.
      */
     public Port(String url, Proxy proxy, PasswordAuthentication cred) throws JAXBException {
-	ctx = JAXBContext.newInstance(schemaProps.getProperty("ws-man.packages"), cl);
-	marshaller = ctx.createMarshaller();
+	marshaller = JAXB.createMarshaller();
 	marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
 	marshaller.setProperty(Marshaller.JAXB_FRAGMENT, Boolean.TRUE);
-	unmarshaller = ctx.createUnmarshaller();
+	unmarshaller = JAXB.createUnmarshaller();
 	scheme = AuthScheme.NTLM;
 	logger = Message.getLogger();
-
 	this.url = url;
 	this.proxy = proxy;
 	this.cred = cred;
