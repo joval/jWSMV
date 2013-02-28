@@ -37,7 +37,6 @@ import jwsmv.util.Xpress;
 import jwsmv.wsman.FaultException;
 import jwsmv.wsman.Port;
 import jwsmv.wsman.operation.CommandOperation;
-import jwsmv.wsman.operation.DeleteOperation;
 import jwsmv.wsman.operation.ReceiveOperation;
 import jwsmv.wsman.operation.SendOperation;
 import jwsmv.wsman.operation.SignalOperation;
@@ -222,7 +221,7 @@ public class ShellCommand extends Process implements Constants, Runnable {
 
     @Override
     public int waitFor() throws InterruptedException {
-	waitFor(360000L);
+	waitFor(3600000L); // 1hr max
 	if (isRunning()) {
 	    destroy();
 	}
@@ -306,14 +305,14 @@ System.out.println("DAS decode");
 			    String streamName = stream.getName();
 			    if (Shell.STDOUT.equals(streamName)) {
 				stdoutPipe.write(val);
-				stdoutPipe.flush();
 			    } else if (Shell.STDERR.equals(streamName)) {
 				stderrPipe.write(val);
-				stderrPipe.flush();
 			    }
 			}
 		    }
 		}
+		stderrPipe.flush(); // flush error stream first
+		stdoutPipe.flush();
 		if (response.isSetCommandState()) {
 		    CommandStateType state = response.getCommandState();
 		    ShellCommand.this.state = State.fromValue(state.getState());
