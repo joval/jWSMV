@@ -38,12 +38,12 @@ public class StdRegProv implements Constants {
     public static final long HKEY_DYN_DATA	= 0x80000006L;
 
     public static final int REG_NONE		= 0;
-    public static final int REG_DWORD		= 1;
-    public static final int REG_BINARY		= 2;
-    public static final int REG_SZ		= 3;
-    public static final int REG_EXPAND_SZ	= 4;
-    public static final int REG_MULTI_SZ	= 5;
-    public static final int REG_QWORD		= 6;
+    public static final int REG_SZ		= 1;
+    public static final int REG_EXPAND_SZ	= 2;
+    public static final int REG_BINARY		= 3;
+    public static final int REG_DWORD		= 4;
+    public static final int REG_MULTI_SZ	= 7;
+    public static final int REG_QWORD		= 11;
 
     static final String CLASS_URI = "http://schemas.microsoft.com/wbem/wsman/1/wmi/root/cimv2/StdRegProv";
     static final DocumentBuilder BUILDER;
@@ -114,7 +114,7 @@ public class StdRegProv implements Constants {
 	if (result instanceof Element) {
 	    Element elt = (Element)result;
 	    if ("EnumKey_OUTPUT".equals(elt.getLocalName())) {
-		int hResult = getHResult(elt);
+		int hResult = (int)getHResult(elt);
 		switch(hResult) {
 		  case 0:
 		    NodeList nodes = elt.getElementsByTagNameNS(CLASS_URI, "sNames");
@@ -124,6 +124,9 @@ public class StdRegProv implements Constants {
 			subkeys.add(nodes.item(i).getTextContent());
 		    }
 		    return subkeys.toArray(new String[len]);
+
+		  case 2:
+		    throw new NoSuchElementException(subkey);
 
 		  default:
 		    throw new Exception("Unexpected result code: " + hResult);
@@ -156,7 +159,7 @@ public class StdRegProv implements Constants {
 	if (result instanceof Element) {
 	    Element elt = (Element)result;
 	    if ("EnumValues_OUTPUT".equals(elt.getLocalName())) {
-		int hResult = getHResult(elt);
+		int hResult = (int)getHResult(elt);
 		switch(hResult) {
 		  case 0:
 		    NodeList nodes = elt.getElementsByTagNameNS(CLASS_URI, "sNames");
@@ -204,7 +207,7 @@ public class StdRegProv implements Constants {
 	if (result instanceof Element) {
 	    Element elt = (Element)result;
 	    if ("GetBinaryValue_OUTPUT".equals(elt.getLocalName())) {
-		int hResult = getHResult(elt);
+		int hResult = (int)getHResult(elt);
 		switch(hResult) {
 		  case 0:
 		    NodeList nodes = elt.getElementsByTagNameNS(CLASS_URI, "uValue");
@@ -214,6 +217,9 @@ public class StdRegProv implements Constants {
 			data[i] = (byte)(0xFF & Short.parseShort(nodes.item(i).getTextContent()));
 		    }
 		    return data;
+
+		  case 2:
+		    throw new NoSuchElementException(value);
 
 		  default:
 		    throw new Exception("Unexpected result code: " + hResult);
@@ -246,7 +252,7 @@ public class StdRegProv implements Constants {
 	if (result instanceof Element) {
 	    Element elt = (Element)result;
 	    if ("GetDWORDValue_OUTPUT".equals(elt.getLocalName())) {
-		int hResult = getHResult(elt);
+		int hResult = (int)getHResult(elt);
 		switch(hResult) {
 		  case 0:
 		    NodeList nodes = elt.getElementsByTagNameNS(CLASS_URI, "uValue");
@@ -256,6 +262,9 @@ public class StdRegProv implements Constants {
 		    } else {
 			throw new Exception("Unexpected return value quantity: " + len);
 		    }
+
+		  case 2:
+		    throw new NoSuchElementException(value);
 
 		  default:
 		    throw new Exception("Unexpected result code: " + hResult);
@@ -288,7 +297,7 @@ public class StdRegProv implements Constants {
 	if (result instanceof Element) {
 	    Element elt = (Element)result;
 	    if ("GetExpandedStringValue_OUTPUT".equals(elt.getLocalName())) {
-		int hResult = getHResult(elt);
+		int hResult = (int)getHResult(elt);
 		switch(hResult) {
 		  case 0:
 		    NodeList nodes = elt.getElementsByTagNameNS(CLASS_URI, "sValue");
@@ -298,6 +307,9 @@ public class StdRegProv implements Constants {
 		    } else {
 			throw new Exception("Unexpected return value quantity: " + len);
 		    }
+
+		  case 2:
+		    throw new NoSuchElementException(value);
 
 		  default:
 		    throw new Exception("Unexpected result code: " + hResult);
@@ -330,7 +342,7 @@ public class StdRegProv implements Constants {
 	if (result instanceof Element) {
 	    Element elt = (Element)result;
 	    if ("GetMultiStringValue_OUTPUT".equals(elt.getLocalName())) {
-		int hResult = getHResult(elt);
+		int hResult = (int)getHResult(elt);
 		switch(hResult) {
 		  case 0:
 		    NodeList nodes = elt.getElementsByTagNameNS(CLASS_URI, "sValue");
@@ -344,6 +356,9 @@ public class StdRegProv implements Constants {
 			}
 			return data;
 		    }
+
+		  case 2:
+		    throw new NoSuchElementException(value);
 
 		  default:
 		    throw new Exception("Unexpected result code: " + hResult);
@@ -376,7 +391,7 @@ public class StdRegProv implements Constants {
 	if (result instanceof Element) {
 	    Element elt = (Element)result;
 	    if ("GetStringValue_OUTPUT".equals(elt.getLocalName())) {
-		int hResult = getHResult(elt);
+		int hResult = (int)getHResult(elt);
 		switch(hResult) {
 		  case 0:
 		    NodeList nodes = elt.getElementsByTagNameNS(CLASS_URI, "sValue");
@@ -386,6 +401,9 @@ public class StdRegProv implements Constants {
 		    } else {
 			throw new Exception("Unexpected return value quantity: " + len);
 		    }
+
+		  case 2:
+		    throw new NoSuchElementException(value);
 
 		  default:
 		    throw new Exception("Unexpected result code: " + hResult);
@@ -418,7 +436,7 @@ public class StdRegProv implements Constants {
 	if (result instanceof Element) {
 	    Element elt = (Element)result;
 	    if ("GetQWORDValue_OUTPUT".equals(elt.getLocalName())) {
-		int hResult = getHResult(elt);
+		int hResult = (int)getHResult(elt);
 		switch(hResult) {
 		  case 0:
 		    NodeList nodes = elt.getElementsByTagNameNS(CLASS_URI, "uValue");
@@ -428,6 +446,9 @@ public class StdRegProv implements Constants {
 		    } else {
 			throw new Exception("Unexpected return value quantity: " + len);
 		    }
+
+		  case 2:
+		    throw new NoSuchElementException(value);
 
 		  default:
 		    throw new Exception("Unexpected result code: " + hResult);
@@ -495,11 +516,11 @@ public class StdRegProv implements Constants {
     /**
      * Get the call result code from the element.
      */
-    private int getHResult(Element elt) throws IllegalArgumentException {
+    private long getHResult(Element elt) throws IllegalArgumentException {
 	NodeList nodes = elt.getElementsByTagNameNS(CLASS_URI, "ReturnValue");
 	int len = nodes.getLength();
 	if (len == 1) {
-	    return Integer.parseInt(nodes.item(0).getTextContent());
+	    return Long.parseLong(nodes.item(0).getTextContent());
 	} else {
 	    throw new IllegalArgumentException("Unexpected return value quantity: " + len);
 	}
