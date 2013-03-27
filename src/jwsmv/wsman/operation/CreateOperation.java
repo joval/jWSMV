@@ -46,6 +46,14 @@ public class CreateOperation extends BaseOperation<AnyXmlType, Object> {
     @Override
     public Object dispatch(Port port) throws IOException, JAXBException, FaultException, FailedLoginException {
         Object obj = dispatch0(port);
+	if (obj instanceof List) {
+	    for (Object elt : (List)obj) {
+		if (elt instanceof ResourceCreated) {
+		    obj = elt;
+		    break;
+		}
+	    }
+	}
 	if (obj instanceof ResourceCreated) {
 	    //
 	    // ResourceCreated is ambiguous, so its children will be Nodes.  We must determine the appropriate
