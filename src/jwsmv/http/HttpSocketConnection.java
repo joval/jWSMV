@@ -172,6 +172,7 @@ public class HttpSocketConnection extends AbstractConnection {
 		socket = new Socket();
 		socket.connect(proxy.address());
 	    }
+	    socket.setSoTimeout(TIMEOUT);
 	}
 	if (secure && proxy != null) {
 	    //

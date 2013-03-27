@@ -11,7 +11,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.ProtocolException;
 import java.net.Proxy;
-import java.net.Socket;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.security.Permission;
@@ -21,7 +20,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
-import javax.net.ssl.SSLSocketFactory;
 
 import jwsmv.util.RFC822;
 
@@ -37,6 +35,15 @@ import jwsmv.util.RFC822;
  */
 abstract class AbstractConnection extends HttpURLConnection {
     static final byte[] CRLF = {'\r', '\n'};
+
+    static int TIMEOUT = 60000;
+
+    /**
+     * Set the timeout value for all sockets.
+     */
+    static void setTimeout(int msecs) {
+	TIMEOUT = msecs;
+    }
 
     /**
      * Set a property of a multi-valued map.
