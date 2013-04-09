@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
+import jwsmv.Message;
 import jwsmv.util.RFC822;
 
 /**
@@ -244,6 +245,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	try {
 	    getResponse();
 	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	return contentLength;
     }
@@ -253,6 +255,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	try {
 	    getResponse();
 	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	return contentType;
     }
@@ -262,6 +265,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	try {
 	    getResponse();
 	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	return contentEncoding;
     }
@@ -271,6 +275,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	try {
 	    getResponse();
 	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	return expiration;
     }
@@ -280,6 +285,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	try {
 	    getResponse();
 	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	return date;
     }
@@ -289,6 +295,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	try {
 	    getResponse();
 	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	return lastModified;
     }
@@ -298,6 +305,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	try {
 	    getResponse();
 	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	return headerFields;
     }
@@ -319,6 +327,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	    try {
 		return Integer.parseInt(s);
 	    } catch (NumberFormatException e) {
+		Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	    }
 	}
 	return def;
@@ -331,6 +340,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	    try {
 		return RFC822.valueOf(s);
 	    } catch (IllegalArgumentException e) {
+		Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	    }
 	}
 	return def;
@@ -341,6 +351,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	try {
 	    getResponse();
 	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	if (orderedHeaderFields.size() > index) {
 	    return orderedHeaderFields.get(index).key();
@@ -354,6 +365,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	try {
 	    getResponse();
 	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	if (orderedHeaderFields.size() > index) {
 	    return orderedHeaderFields.get(index).value();
@@ -370,6 +382,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	try {
 	    getResponse();
 	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	if (responseCode == HTTP_OK) {
 	    return responseData;
@@ -386,6 +399,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	try {
 	    getResponse();
 	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	if (responseCode == HTTP_OK) {
 	    return null;
@@ -399,6 +413,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	try {
 	    getResponse();
 	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	return responseCode;
     }
@@ -408,6 +423,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	try {
 	    getResponse();
 	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	return responseMessage;
     }

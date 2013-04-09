@@ -36,6 +36,7 @@ import org.microsoft.security.ntlm.NtlmSession;
 import org.microsoft.security.ntlm.impl.NtlmChallengeMessage;
 import org.microsoft.security.ntlm.impl.NtlmRoutines;
 
+import jwsmv.Message;
 import jwsmv.util.Base64;
 
 /**
@@ -57,6 +58,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 	try {
 	    host = InetAddress.getLocalHost().getHostName();
 	} catch (UnknownHostException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
     }
 
@@ -220,7 +222,8 @@ public class NtlmHttpURLConnection extends AbstractConnection {
     public Object getContent() throws IOException {
 	try {
 	    getResponse();
-	} catch (IOException ex) {
+	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	return connection.getContent();
     }
@@ -229,7 +232,8 @@ public class NtlmHttpURLConnection extends AbstractConnection {
     public Object getContent(Class[] classes) throws IOException {
 	try {
 	    getResponse();
-	} catch (IOException ex) {	
+	} catch (IOException e) {
+	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
 	return connection.getContent(classes);
     }

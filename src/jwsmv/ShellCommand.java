@@ -49,6 +49,8 @@ import jwsmv.wsman.operation.SignalOperation;
  */
 public class ShellCommand extends Process implements Constants, Runnable {
     static final long TIMEOUT_CODE = 2150858793L;
+    static final byte CTL_C = 0x03;
+    static final byte CTL_BREAK = 0x1C;
 
     /**
      * An enumeration of codes that can be issued to a running process using a signal.
@@ -296,7 +298,6 @@ public class ShellCommand extends Process implements Constants, Runnable {
 		    if (stream.isSetValue()) {
 			byte[] val = null;
 			if (compress) {
-System.out.println("DAS decode");
 			    val = codec.decode(stream.getValue());
 			} else {
 			    val = stream.getValue();
@@ -401,19 +402,26 @@ System.out.println("DAS decode");
     }
 
     /**
+     * Send a signal to the process.
+     */
+    SignalResponse signal(SignalCode code) throws FailedLoginException, JAXBException, FaultException, IOException {
+	Signal signal = Factories.SHELL.createSignal();
+	signal.setCommandId(id);
+	signal.setCode(code.value());
+	SignalOperation signalOperation = new SignalOperation(signal);
+	signalOperation.addResourceURI(SHELL_URI);
+	signalOperation.addSelectorSet(selector);
+	return signalOperation.dispatch(port);
+    }
+
+    /**
      * Delete the ShellCommand on the target machine (idempotent).
      */
     @Override
     protected synchronized void finalize() {
 	if (state != State.PENDING && !disposed) {
 	    try {
-		Signal signal = Factories.SHELL.createSignal();
-		signal.setCommandId(id);
-		signal.setCode(SignalCode.TERMINATE.value());
-		SignalOperation signalOperation = new SignalOperation(signal);
-		signalOperation.addResourceURI(SHELL_URI);
-		signalOperation.addSelectorSet(selector);
-		SignalResponse response = signalOperation.dispatch(port);
+		signal(SignalCode.TERMINATE);
 		try {
 		    stdoutPipe.close();
 		} catch (IOException e) {
@@ -440,27 +448,33 @@ System.out.println("DAS decode");
 	@Override
 	public synchronized void flush() throws IOException {
 	    try {
-		StreamType stream = Factories.SHELL.createStreamType();
-		stream.setName(Shell.STDIN);
-		stream.setCommandId(id);
-		if (compress) {
-System.out.println("DAS encode");
-		    stream.setValue(codec.encode(toByteArray()));
+		byte[] buff = toByteArray();
+		if (buff.length == 1 && buff[0] == CTL_C) {
+		    signal(SignalCode.CTL_C);
+		} else if (buff.length == 1 && buff[0] == CTL_BREAK) {
+		    signal(SignalCode.CTL_BREAK);
 		} else {
-		    stream.setValue(toByteArray());
-		}
-		reset();
-		Send send = Factories.SHELL.createSend();
-		send.getStream().add(stream);
-		SendOperation sendOperation = new SendOperation(send);
-		sendOperation.addResourceURI(SHELL_URI);
-		sendOperation.addSelectorSet(selector);
+		    StreamType stream = Factories.SHELL.createStreamType();
+		    stream.setName(Shell.STDIN);
+		    stream.setCommandId(id);
+		    if (compress) {
+			stream.setValue(codec.encode(buff));
+		    } else {
+			stream.setValue(buff);
+		    }
+		    reset();
+		    Send send = Factories.SHELL.createSend();
+		    send.getStream().add(stream);
+		    SendOperation sendOperation = new SendOperation(send);
+		    sendOperation.addResourceURI(SHELL_URI);
+		    sendOperation.addSelectorSet(selector);
 
-		SendResponse response = sendOperation.dispatch(port);
-		if (response.isSetDesiredStream()) {
-		    StreamType rs = response.getDesiredStream();
-		    if (rs.getName().equals(Shell.STDIN) && rs.getEnd()) {
-			close();
+		    SendResponse response = sendOperation.dispatch(port);
+		    if (response.isSetDesiredStream()) {
+			StreamType rs = response.getDesiredStream();
+			if (rs.getName().equals(Shell.STDIN) && rs.getEnd()) {
+			    close();
+			}
 		    }
 		}
 	    } catch (FailedLoginException e) {
