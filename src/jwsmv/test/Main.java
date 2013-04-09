@@ -89,7 +89,7 @@ public class Client implements Constants {
 
 	try {
 //DAS
-	    Port port = new Port(url, null, new PasswordAuthentication(user, pass.toCharArray()));
+	    Port port = new Port(url, new PasswordAuthentication(user, pass.toCharArray()));
 	    port.setEncryption(false);
 	    Client client = new Client(port);
 

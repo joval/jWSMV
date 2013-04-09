@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.ProtocolException;
-import java.net.Proxy;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.security.Permission;

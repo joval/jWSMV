@@ -129,13 +129,13 @@ public class NtlmHttpURLConnection extends AbstractConnection {
     /**
      * Connect through a proxy, using the specified credentials to negotiate with the proxy.
      */
-    public void setProxy(Proxy proxy, PasswordAuthentication cred) {
+    public void setProxy(Proxy proxy, PasswordAuthentication proxyCred) {
 	if (connected) {
 	    throw new IllegalStateException("connected");
 	} else {
 	    connection.setProxy(proxy);
-	    if (cred != null) {
-		proxySession = createSession(cred, false);
+	    if (proxyCred != null) {
+		proxySession = createSession(proxyCred, false);
 		proxyPhase = NtlmPhase.TYPE1;
 	    }
 	}

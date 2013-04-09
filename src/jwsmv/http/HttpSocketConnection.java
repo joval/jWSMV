@@ -267,13 +267,15 @@ public class HttpSocketConnection extends AbstractConnection {
      * Set a proxy.
      */
     void setProxy(Proxy proxy) {
-	if (proxy != null) {
+	if (proxy == null) {
+	    this.proxy = null;
+	} else {
 	    switch(proxy.type()) {
 	      case HTTP:
 		this.proxy = proxy;
 		break;
 	      case SOCKS:
-		throw new IllegalArgumentException("Illegal proxy type: SOCKS");
+		throw new IllegalArgumentException("Unsupported proxy type: SOCKS");
 	      case DIRECT:
 	      default:
 		this.proxy = null;
@@ -287,7 +289,7 @@ public class HttpSocketConnection extends AbstractConnection {
      */
     void reset() {
 	initialize();
-	setRequestProperty("User-Agent", "jOVAL HTTP Client");
+	setRequestProperty("User-Agent", "jWSMV HTTP Client");
 	if (stream != null) {
 	    try {
 		stream.close();
@@ -373,10 +375,10 @@ public class HttpSocketConnection extends AbstractConnection {
 		int len = 0;
 		while((len = readChunkLength(in)) > 0) {
 		    byte[] bytes = new byte[len];
-		    posit(len == in.read(bytes, 0, len));
+		    assume(len == in.read(bytes, 0, len));
 		    buffer.write(bytes);
-		    posit(in.read() == '\r');
-		    posit(in.read() == '\n');
+		    assume(in.read() == '\r');
+		    assume(in.read() == '\n');
 		}
 		responseData = new HSBufferedInputStream(buffer);
 		contentLength = ((HSBufferedInputStream)responseData).size();
@@ -484,7 +486,7 @@ public class HttpSocketConnection extends AbstractConnection {
     /**
      * Like assert, but always enabled.
      */
-    private void posit(boolean test) throws AssertionError {
+    private void assume(boolean test) throws AssertionError {
 	if (!test) throw new AssertionError();
     }
 

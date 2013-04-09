@@ -22,10 +22,16 @@ public class KerberosHttpURLConnection extends AbstractConnection {
     }
 
     private Proxy proxy;
+    private PasswordAuthentication proxyCred;
     private String host;
 
     public void setProxy(Proxy proxy) {
+	setProxy(proxy, null);
+    }
+
+    public void setProxy(Proxy proxy, PasswordAuthentication proxyCred) {
 	this.proxy = proxy;
+	this.proxyCred = proxyCred;
     }
 
     // Overrides for HttpURLConnection

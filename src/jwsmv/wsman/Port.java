@@ -91,8 +91,8 @@ public class Port implements Constants {
 
     private AuthScheme scheme;
     private String url;
-    private Proxy proxy;
-    private PasswordAuthentication cred;
+    private Proxy proxy = null;
+    private PasswordAuthentication cred, proxyCred = null;
     private Marshaller marshaller;
     private Unmarshaller unmarshaller;
     private boolean encrypt;
@@ -103,13 +103,6 @@ public class Port implements Constants {
      * Create a SOAP Web-Services port.
      */
     public Port(String url, PasswordAuthentication cred) throws JAXBException {
-	this(url, null, cred);
-    }
-
-    /**
-     * Create a SOAP Web-Services port through an HTTP proxy.
-     */
-    public Port(String url, Proxy proxy, PasswordAuthentication cred) throws JAXBException {
 	marshaller = JAXB.createMarshaller();
 	marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
 	marshaller.setProperty(Marshaller.JAXB_FRAGMENT, Boolean.TRUE);
@@ -117,10 +110,17 @@ public class Port implements Constants {
 	scheme = AuthScheme.NTLM;
 	logger = Message.getLogger();
 	this.url = url;
-	this.proxy = proxy;
 	this.cred = cred;
 	this.encrypt = true;
 	this.debug = null;
+    }
+
+    /**
+     * Set a proxy and proxy credentials.
+     */
+    public void setProxy(Proxy proxy, PasswordAuthentication proxyCred) {
+	this.proxy = proxy;
+	this.proxyCred = proxyCred;
     }
 
     /**
@@ -228,12 +228,12 @@ public class Port implements Constants {
 
 		  case KERBEROS:
 		    conn = KerberosHttpURLConnection.openConnection(u, cred, encrypt);
-		    ((KerberosHttpURLConnection)conn).setProxy(proxy);
+		    ((KerberosHttpURLConnection)conn).setProxy(proxy, proxyCred);
 		    break;
 
 		  case NTLM:
 		    conn = NtlmHttpURLConnection.openConnection(u, cred, encrypt);
-		    ((NtlmHttpURLConnection)conn).setProxy(proxy);
+		    ((NtlmHttpURLConnection)conn).setProxy(proxy, proxyCred);
 		    break;
 
 		  case BASIC:
@@ -242,7 +242,7 @@ public class Port implements Constants {
 		    } else {
 			conn = (HttpURLConnection)u.openConnection(proxy);
 		    }
-		    String clear = new StringBuffer(cred.getUserName()).append(":").append(cred.getPassword()).toString();
+		    String clear = proxyCred.getUserName() + ":" + new String(proxyCred.getPassword());
 		    String auth = new StringBuffer("Basic ").append(Base64.encodeBytes(clear.getBytes())).toString();
 		    conn.setRequestProperty("Authorization", auth);
 		    break;
