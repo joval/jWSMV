@@ -117,7 +117,7 @@ public class Client implements Constants {
 	    }
 	    OutputStream debug = null;
 	    try {
-		Port port = new Port(url, null, new PasswordAuthentication(user, pass.toCharArray()));
+		Port port = new Port(url, new PasswordAuthentication(user, pass.toCharArray()));
 		if (debugFile != null) {
 		    debug = new FileOutputStream(debugFile);
 		    port.setDebug(debug);
