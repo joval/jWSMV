@@ -220,21 +220,13 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 
     @Override
     public Object getContent() throws IOException {
-	try {
-	    getResponse();
-	} catch (IOException e) {
-	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
-	}
+	getResponse();
 	return connection.getContent();
     }
 
     @Override
     public Object getContent(Class[] classes) throws IOException {
-	try {
-	    getResponse();
-	} catch (IOException e) {
-	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
-	}
+	getResponse();
 	return connection.getContent(classes);
     }
 

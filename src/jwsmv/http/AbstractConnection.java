@@ -36,7 +36,7 @@ import jwsmv.util.RFC822;
 abstract class AbstractConnection extends HttpURLConnection {
     static final byte[] CRLF = {'\r', '\n'};
 
-    static int TIMEOUT = 60000;
+    static int TIMEOUT = 90000; // 90 sec, which is greater than the 60 sec wsmv:receive SOAP response timeout
 
     /**
      * Set the timeout value for all sockets.
@@ -378,11 +378,7 @@ abstract class AbstractConnection extends HttpURLConnection {
      */
     @Override
     public InputStream getInputStream() throws IOException {
-	try {
-	    getResponse();
-	} catch (IOException e) {
-	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
-	}
+	getResponse();
 	if (responseCode == HTTP_OK) {
 	    return responseData;
 	} else {
@@ -409,21 +405,13 @@ abstract class AbstractConnection extends HttpURLConnection {
 
     @Override
     public int getResponseCode() throws IOException {
-	try {
-	    getResponse();
-	} catch (IOException e) {
-	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
-	}
+	getResponse();
 	return responseCode;
     }
 
     @Override
     public String getResponseMessage() throws IOException {
-	try {
-	    getResponse();
-	} catch (IOException e) {
-	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
-	}
+	getResponse();
 	return responseMessage;
     }
 }
