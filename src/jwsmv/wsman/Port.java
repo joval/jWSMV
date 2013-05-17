@@ -91,7 +91,7 @@ public class Port implements Constants {
 
     private AuthScheme scheme;
     private String url;
-    private Proxy proxy = null;
+    private Proxy proxy;
     private PasswordAuthentication cred, proxyCred = null;
     private Marshaller marshaller;
     private Unmarshaller unmarshaller;
@@ -109,6 +109,7 @@ public class Port implements Constants {
 	unmarshaller = JAXB.createUnmarshaller();
 	scheme = AuthScheme.NTLM;
 	logger = Message.getLogger();
+	proxy = Proxy.NO_PROXY;
 	this.url = url;
 	this.cred = cred;
 	this.encrypt = true;
@@ -219,10 +220,13 @@ public class Port implements Constants {
 		logger.trace(Message.STATUS_CONNECT, url, scheme);
 		switch(scheme) {
 		  case NONE:
-		    if (proxy == null) {
+		    switch(proxy.type()) {
+		      case DIRECT:
 			conn = (HttpURLConnection)u.openConnection();
-		    } else {
+			break;
+		      default:
 			conn = (HttpURLConnection)u.openConnection(proxy);
+			break;
 		    }
 		    break;
 
@@ -237,14 +241,19 @@ public class Port implements Constants {
 		    break;
 
 		  case BASIC:
-		    if (proxy == null) {
+		    switch(proxy.type()) {
+		      case DIRECT:
 			conn = (HttpURLConnection)u.openConnection();
-		    } else {
+			break;
+		      default:
 			conn = (HttpURLConnection)u.openConnection(proxy);
+			if (proxyCred != null) {
+			    String clear = proxyCred.getUserName() + ":" + new String(proxyCred.getPassword());
+			    String auth = "Basic " + Base64.encodeBytes(clear.getBytes());
+			    conn.setRequestProperty("Authorization", auth);
+			}
+			break;
 		    }
-		    String clear = proxyCred.getUserName() + ":" + new String(proxyCred.getPassword());
-		    String auth = new StringBuffer("Basic ").append(Base64.encodeBytes(clear.getBytes())).toString();
-		    conn.setRequestProperty("Authorization", auth);
 		    break;
 		}
 

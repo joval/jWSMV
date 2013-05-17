@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
 import java.net.ProtocolException;
 import java.net.Proxy;
 import java.net.Socket;
@@ -88,7 +89,7 @@ public class HttpSocketConnection extends AbstractConnection {
 
     @Override
     public boolean usingProxy() {
-	return proxy != null;
+	return proxy == null ? false : proxy.type() != Proxy.Type.DIRECT;
     }
 
     /**
@@ -166,15 +167,23 @@ public class HttpSocketConnection extends AbstractConnection {
 	    return;
 	}
 	if (socket == null || socket.isClosed()) {
-	    if (proxy == null) {
-		socket = new Socket(url.getHost(), url.getPort());
-	    } else {
+	    switch(proxy.type()) {
+	      case SOCKS:
+		socket = new Socket(proxy);
+		socket.connect(new InetSocketAddress(url.getHost(), url.getPort()));
+		break;
+	      case HTTP:
 		socket = new Socket();
 		socket.connect(proxy.address());
+		break;
+	      case DIRECT:
+	      default:
+		socket = new Socket(url.getHost(), url.getPort());
+		break;
 	    }
 	    socket.setSoTimeout(TIMEOUT);
 	}
-	if (secure && proxy != null) {
+	if (secure && proxy.type() == Proxy.Type.HTTP) {
 	    //
 	    // Establish a tunnel through the proxy
 	    //
@@ -221,14 +230,18 @@ public class HttpSocketConnection extends AbstractConnection {
 	    }
 	} else {
 	    StringBuffer req = new StringBuffer(getRequestMethod()).append(" ");
-	    if (proxy == null) {
+	    switch(proxy.type()) {
+	      case SOCKS:
+	      case DIRECT:
 		String path = url.getPath();
 		if (!path.startsWith("/")) {
 		    req.append("/");
 		}
 		req.append(path);
-	    } else {
+		break;
+	      case HTTP:
 		req.append(url.toString());
+		break;
 	    }
 	    req.append(" HTTP/1.1");
 	    setRequestProperty("Connection", "Keep-Alive");
@@ -268,19 +281,9 @@ public class HttpSocketConnection extends AbstractConnection {
      */
     void setProxy(Proxy proxy) {
 	if (proxy == null) {
-	    this.proxy = null;
+	    this.proxy = Proxy.NO_PROXY;
 	} else {
-	    switch(proxy.type()) {
-	      case HTTP:
-		this.proxy = proxy;
-		break;
-	      case SOCKS:
-		throw new IllegalArgumentException("Unsupported proxy type: SOCKS");
-	      case DIRECT:
-	      default:
-		this.proxy = null;
-		break;
-	    }
+	    this.proxy = proxy;
 	}
     }
 

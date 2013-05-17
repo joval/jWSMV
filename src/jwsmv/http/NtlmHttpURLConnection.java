@@ -134,7 +134,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 	    throw new IllegalStateException("connected");
 	} else {
 	    connection.setProxy(proxy);
-	    if (proxyCred != null) {
+	    if (proxy != null && proxy.type() == Proxy.Type.HTTP && proxyCred != null) {
 		proxySession = createSession(proxyCred, false);
 		proxyPhase = NtlmPhase.TYPE1;
 	    }
