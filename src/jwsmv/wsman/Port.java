@@ -250,7 +250,7 @@ public class Port implements Constants {
 			if (proxyCred != null) {
 			    String clear = proxyCred.getUserName() + ":" + new String(proxyCred.getPassword());
 			    String auth = "Basic " + Base64.encodeBytes(clear.getBytes());
-			    conn.setRequestProperty("Authorization", auth);
+			    conn.setRequestProperty("Proxy-Authorization", auth);
 			}
 			break;
 		    }

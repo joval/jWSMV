@@ -189,9 +189,9 @@ public class HttpSocketConnection extends AbstractConnection {
 	    //
 	    write(new StringBuffer("CONNECT ").append(host).append(" HTTP/1.1").toString());
 	    write(CRLF);
-	    String temp = getRequestProperty("Proxy-authorization");
+	    String temp = getRequestProperty("Proxy-Authorization");
 	    if (temp != null) {
-		write(new KVP("Proxy-authorization", temp));
+		write(new KVP("Proxy-Authorization", temp));
 	    }
 	    temp = getRequestProperty("User-Agent");
 	    if (temp != null) {
