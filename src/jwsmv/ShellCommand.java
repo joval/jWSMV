@@ -292,6 +292,9 @@ public class ShellCommand extends Process implements Constants, Runnable {
 		options.getOption().add(keepAlive);
 		receiveOperation.addHeader(options);
 
+		//
+		// Buffer the output stream while passing along the error stream, then send all the output at once.
+		//
 		ReceiveResponse response = receiveOperation.dispatch(port);
 		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 		for (StreamType stream : response.getStream()) {
@@ -305,14 +308,15 @@ public class ShellCommand extends Process implements Constants, Runnable {
 			if (val.length > 0) {
 			    String streamName = stream.getName();
 			    if (Shell.STDOUT.equals(streamName)) {
-				stdoutPipe.write(val);
+				buffer.write(val);
 			    } else if (Shell.STDERR.equals(streamName)) {
 				stderrPipe.write(val);
 			    }
 			}
 		    }
 		}
-		stderrPipe.flush(); // flush error stream first
+		stderrPipe.flush();
+		stdoutPipe.write(buffer.toByteArray());
 		stdoutPipe.flush();
 		if (response.isSetCommandState()) {
 		    CommandStateType state = response.getCommandState();
