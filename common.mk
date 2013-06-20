@@ -13,7 +13,7 @@ ifeq (Windows, $(findstring Windows,$(OS)))
 else
     OS=$(shell uname)
     CLN=:
-    JAVACFLAGS=-Xlint:unchecked -XDignore.symbol.file=true -Xbootclasspath/p:$(JAXB_HOME)/lib/jaxb-api.jar:$(JAXB_HOME)/lib/jaxb-impl.jar
+    JAVACFLAGS=-Xlint:unchecked -XDignore.symbol.file=true
 endif
 
 ifeq (Linux, $(findstring Linux,$(OS)))
@@ -33,7 +33,7 @@ ifeq (1.7, $(findstring 1.7,`$(JAVA) -version`))
     JAVA_VERSION=1.7
 endif
 
-XJC=$(JAVA) -jar $(JAXB_HOME)/lib/jaxb-xjc.jar
+XJC=$(JAVA_HOME)/bin/xjc
 XJCFLAGS=-enableIntrospection
 JAVAC=$(JAVA_HOME)/bin/javac
 JAR=$(JAVA_HOME)/bin/jar
