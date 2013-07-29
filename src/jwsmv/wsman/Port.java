@@ -21,8 +21,6 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
 import javax.security.auth.login.LoginException;
 import javax.security.auth.login.FailedLoginException;
 import javax.xml.bind.JAXBContext;

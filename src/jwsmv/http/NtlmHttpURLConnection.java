@@ -638,9 +638,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 	    domain = user.substring(0, ptr);
 	    user = user.substring(ptr+1);
 	}
-	String pass = new String(cred.getPassword());
-	NtlmAuthenticator auth = new NtlmAuthenticator(NTLMV2, CO, host, domain, user, pass, encrypt);
-	return auth.createSession();
+	return NtlmAuthenticator.createSession(NTLMV2, CO, encrypt, host, domain, user, cred.getPassword());
     }
 
     /**
