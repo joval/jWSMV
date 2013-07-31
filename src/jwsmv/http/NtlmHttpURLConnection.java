@@ -52,13 +52,12 @@ public class NtlmHttpURLConnection extends AbstractConnection {
     private static long MAX_KEEPALIVE = 120000L; // 2 minutes
 
     private static Hashtable<String, Queue<NtlmHttpURLConnection>> pool;
-    private static String host = "localhost"; 
+    private static String host = null;
     static {
 	pool = new Hashtable<String, Queue<NtlmHttpURLConnection>>();
 	try {
 	    host = InetAddress.getLocalHost().getHostName();
 	} catch (UnknownHostException e) {
-	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
     }
 
