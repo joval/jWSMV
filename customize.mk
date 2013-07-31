@@ -10,9 +10,11 @@
 #
 # JAVA_HOME is where you've installed your JDK.
 #
-JAVA_HOME=$(TOP)/../../tools/jdk1.7.0_21
+#JAVA_HOME=$(TOP)/../../tools/jdk1.7.0_21
+JAVA_HOME=$(TOP)/../../tools/jdk1.6.0_26
 
 #
 # JAXB_HOME is where you've installed JAXB
+# Note: This is only required when building with a pre-Java7 JDK
 #
 JAXB_HOME=$(TOP)/../../tools/jaxb-ri-2.2.6

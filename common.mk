@@ -33,7 +33,12 @@ ifeq (1.7, $(findstring 1.7,`$(JAVA) -version`))
     JAVA_VERSION=1.7
 endif
 
-XJC=$(JAVA_HOME)/bin/xjc
+ifeq (1.7, $(JAVA_VERSION))
+    XJC=$(JAVA_HOME)/bin/xjc
+else
+    XJC=$(JAVA) -jar $(JAXB_HOME)/lib/jaxb-xjc.jar
+endif
+
 XJCFLAGS=-enableIntrospection
 JAVAC=$(JAVA_HOME)/bin/javac
 JAR=$(JAVA_HOME)/bin/jar

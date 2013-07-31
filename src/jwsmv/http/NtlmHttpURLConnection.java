@@ -631,8 +631,8 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 	if (cred == null) {
 	    return null;
 	}
+	String domain = null;
 	String user = cred.getUserName();
-	String domain = host;
 	int ptr = user.indexOf("\\");
 	if (ptr != -1) {
 	    domain = user.substring(0, ptr);
