@@ -10,6 +10,7 @@ import java.util.Vector;
 import javax.security.auth.login.FailedLoginException;
 import javax.xml.bind.JAXBException;
 import javax.xml.datatype.Duration;
+import javax.xml.ws.http.HTTPException;
 
 import org.xmlsoap.ws.addressing.EndpointReferenceType;
 import org.dmtf.wsman.AttributableDuration;
@@ -63,7 +64,7 @@ abstract class BaseOperation<I, O> implements IOperation<I, O>, Constants {
 	headers.add(Factories.WSMAN.createResourceURI(uri));
     }
 
-    public O dispatch(Port port) throws IOException, JAXBException, FaultException, FailedLoginException {
+    public O dispatch(Port port) throws IOException, HTTPException, JAXBException, FaultException, FailedLoginException {
 	@SuppressWarnings("unchecked")
         O result = (O)dispatch0(port);
 	return result;
@@ -74,7 +75,7 @@ abstract class BaseOperation<I, O> implements IOperation<I, O>, Constants {
     /**
      * The internal implementation of dispatch, which subclasses that override the typed public dispatch method can use.
      */
-    final Object dispatch0(Port port) throws IOException, JAXBException, FaultException, FailedLoginException {
+    final Object dispatch0(Port port) throws IOException, HTTPException, JAXBException, FaultException, FailedLoginException {
 	List<Object> dispatchHeaders = new Vector<Object>();
 	dispatchHeaders.addAll(headers);
 	if (duration != null) {

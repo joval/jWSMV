@@ -19,6 +19,8 @@ import java.net.UnknownHostException;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.security.Permission;
+import java.security.SignatureException;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -283,6 +285,16 @@ public class NtlmHttpURLConnection extends AbstractConnection {
     }
 
     @Override
+    public String getHeaderField(int index) {
+	return connection.getHeaderField(index);
+    }
+
+    @Override
+    public String getHeaderFieldKey(int index) {
+	return connection.getHeaderFieldKey(index);
+    }
+
+    @Override
     public String getRequestProperty(String key) {
 	return connection.getRequestProperty(key);
     }
@@ -414,12 +426,14 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 
 		  default:
 		    responseData = responseCode == HTTP_OK ? connection.getInputStream() : connection.getErrorStream();
-		    if (encrypt) {
+		    if (encrypt && contentType != null) {
 			responseData = new ByteArrayInputStream(decrypt(responseData));
 		    }
 		    return;
 		}
 	    }
+	} catch (SignatureException e) {
+	    throw new IOException(e);
 	} finally {
 	    lastUsed = System.currentTimeMillis();
 	    cachedOutput = null;
@@ -447,10 +461,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 	proxyPhase = NtlmPhase.NA;
     }
 
-    /**
-     * REMIND (DAS): still need to implement validation of the signature.
-     */
-    private byte[] decrypt(InputStream in) throws IOException {
+    private byte[] decrypt(InputStream in) throws IOException, SignatureException {
 	StringTokenizer tok = new StringTokenizer(contentType, ";");
 	if ("multipart/encrypted".equals(tok.nextToken())) {
 	    String boundary = null;
@@ -536,8 +547,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 		}
 		byte[] sealed = new byte[offset];
 		System.arraycopy(data, 0, sealed, 0, sealed.length);
-		data = session.unseal(sealed);
-		return data;
+		return session.unseal(sealed, signature);
 	    } else {
 		throw new IOException("Unexpected line: " + pair.toString());
 	    }

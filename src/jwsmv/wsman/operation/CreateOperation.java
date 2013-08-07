@@ -9,6 +9,7 @@ import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.xml.namespace.QName;
 import javax.security.auth.login.FailedLoginException;
+import javax.xml.ws.http.HTTPException;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
@@ -44,7 +45,7 @@ public class CreateOperation extends BaseOperation<AnyXmlType, Object> {
      * @returns either an org.w3c.ws.addressing.EndpointReferenceType, or an org.xmlsoap.ws.addressing.EndpointReferenceType.
      */
     @Override
-    public Object dispatch(Port port) throws IOException, JAXBException, FaultException, FailedLoginException {
+    public Object dispatch(Port port) throws IOException, HTTPException, JAXBException, FaultException, FailedLoginException {
         Object obj = dispatch0(port);
 	if (obj instanceof List) {
 	    for (Object elt : (List)obj) {
@@ -173,7 +174,7 @@ public class CreateOperation extends BaseOperation<AnyXmlType, Object> {
         	throw new IllegalArgumentException("Namespace: " + ns);
 	    }
         } else {
-	    throw new IllegalArgumentException(obj.getClass().getName());
+	    throw new IllegalArgumentException(obj == null ? "null" : obj.getClass().getName());
 	}
     }
 

@@ -33,7 +33,7 @@ import jwsmv.wsman.Port;
 public class Client implements Constants {
     public static void main(String[] argv) {
 	String host = null;
-	String dir = "%WINDIR%";
+	String dir = "%USERPROFILE%";
 	String user = null;
 	String pass = null;
 	String debugFile = null;

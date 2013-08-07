@@ -6,6 +6,7 @@ package jwsmv.wsman.operation;
 import java.io.IOException;
 import javax.xml.bind.JAXBException;
 import javax.security.auth.login.FailedLoginException;
+import javax.xml.ws.http.HTTPException;
 
 import org.xmlsoap.ws.transfer.AnyXmlType;
 import org.xmlsoap.ws.transfer.AnyXmlOptionalType;
@@ -26,7 +27,9 @@ public class PutOperation extends BaseOperation<AnyXmlType, AnyXmlOptionalType> 
     }
 
     @Override
-    public AnyXmlOptionalType dispatch(Port port) throws IOException, JAXBException, FaultException, FailedLoginException {
+    public AnyXmlOptionalType dispatch(Port port)
+		throws IOException, HTTPException, JAXBException, FaultException, FailedLoginException {
+
 	Object obj = dispatch0(port);
 	if (obj instanceof AnyXmlOptionalType) {
 	    return (AnyXmlOptionalType)obj;

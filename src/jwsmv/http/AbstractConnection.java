@@ -352,7 +352,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	} catch (IOException e) {
 	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
-	if (orderedHeaderFields.size() > index) {
+	if (orderedHeaderFields != null && orderedHeaderFields.size() > index) {
 	    return orderedHeaderFields.get(index).key();
 	} else {
 	    return null;
@@ -366,7 +366,7 @@ abstract class AbstractConnection extends HttpURLConnection {
 	} catch (IOException e) {
 	    Message.getLogger().warn(Message.getMessage(Message.ERROR_EXCEPTION), e);
 	}
-	if (orderedHeaderFields.size() > index) {
+	if (orderedHeaderFields != null && orderedHeaderFields.size() > index) {
 	    return orderedHeaderFields.get(index).value();
 	} else {
 	    return null;

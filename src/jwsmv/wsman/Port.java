@@ -29,6 +29,7 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.transform.dom.DOMSource;
+import javax.xml.ws.http.HTTPException;
 import org.w3c.dom.Node;
 
 import org.slf4j.cal10n.LocLogger;
@@ -104,6 +105,7 @@ public class Port implements Constants {
 	marshaller = JAXB.createMarshaller();
 	marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
 	marshaller.setProperty(Marshaller.JAXB_FRAGMENT, Boolean.TRUE);
+	marshaller.setProperty(Marshaller.JAXB_ENCODING, "UTF-8");
 	unmarshaller = JAXB.createUnmarshaller();
 	scheme = AuthScheme.NTLM;
 	logger = Message.getLogger();
@@ -153,7 +155,7 @@ public class Port implements Constants {
     }
 
     public Object dispatch(String action, List<Object> headers, Object input)
-		throws IOException, JAXBException, FaultException, FailedLoginException {
+		throws IOException, HTTPException, JAXBException, FaultException, FailedLoginException {
 
 	Header header = Factories.SOAP.createHeader();
 
@@ -283,7 +285,6 @@ public class Port implements Constants {
 		retry = false;
 		int code = conn.getResponseCode();
 		switch(code) {
-		  case HttpURLConnection.HTTP_BAD_REQUEST:
 		  case HttpURLConnection.HTTP_INTERNAL_ERROR:
 		    result = getSOAPBodyContents(conn.getErrorStream(), conn.getContentType());
 		    break;
@@ -299,7 +300,7 @@ public class Port implements Constants {
 		  default:
 		    logger.warn(Message.ERROR_RESPONSE, code);
 		    debug(conn);
-		    break;
+		    throw new HTTPException(code);
 		}
 	    } finally {
 		if (conn != null) {
@@ -366,11 +367,11 @@ public class Port implements Constants {
 	    debug.write(sb.toString().getBytes());
 	    int len = conn.getHeaderFields().size();
 	    if (len > 0) {
-		sb = new StringBuffer("  ").append("  ").append(conn.getHeaderField(0)).append("\r\n");
+		sb = new StringBuffer("  ").append(conn.getHeaderField(0)).append("\r\n");
 		debug.write(sb.toString().getBytes());
 		for (int i=1; i < len; i++) {
 		    sb = new StringBuffer("  ");
-		    sb.append(conn.getHeaderFieldKey(i)).append(": ").append(conn.getHeaderField(i));
+		    sb.append(conn.getHeaderFieldKey(i)).append(": ").append(conn.getHeaderField(i)).append("\n");
 		    debug.write(sb.toString().getBytes());
 		}
 	    }

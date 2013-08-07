@@ -8,6 +8,7 @@ import java.util.List;
 import javax.security.auth.login.FailedLoginException;
 import javax.xml.bind.JAXBException;
 import javax.xml.datatype.Duration;
+import javax.xml.ws.http.HTTPException;
 
 import jwsmv.wsman.Port;
 import jwsmv.wsman.FaultException;
@@ -33,5 +34,5 @@ public interface IOperation<I, O> {
      * Get the output (i.e., SOAP response message body contents) for the operation, dispatched through the specified
      * port.
      */
-    O dispatch(Port port) throws IOException, JAXBException, FaultException, FailedLoginException;
+    O dispatch(Port port) throws IOException, HTTPException, FailedLoginException, JAXBException, FaultException;
 }
