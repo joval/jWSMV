@@ -178,10 +178,6 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 		temp.write(sb.toString().getBytes("US-ASCII"));
 		temp.write("--Encrypted Boundary\r\n".getBytes("US-ASCII"));
 		temp.write("Content-Type: application/octet-stream\r\n".getBytes("US-ASCII"));
-
-		byte[] mac = session.calculateMac(cachedOutput.toByteArray());
-		writeUInt(mac.length, temp);
-		temp.write(mac);
 		temp.write(session.seal(cachedOutput.toByteArray()));
 		temp.write("--Encrypted Boundary--\r\n".getBytes("US-ASCII"));
 		cachedOutput = temp;
@@ -523,10 +519,6 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 	    }
 	    pair = readKVP(in);
 	    if ("Content-Type".equalsIgnoreCase(pair.key()) && "application/octet-stream".equals(pair.value())) {
-		int sigLen = readUInt(in);
-		byte[] signature = new byte[sigLen];
-		readFully(in, signature);
-
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		byte[] buff = new byte[512];
 		int len = 0;
@@ -540,14 +532,10 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 		if (offset < 0) {
 		    throw new IOException("Data shorter than barrier");
 		}
-		for (int i=0; i < end.length; i++) {
-		    if (end[i] != data[offset+i]) {
-			throw new IOException("Data not terminated with barrier");
-		    }
+		if (!Arrays.equals(end, Arrays.copyOfRange(data, offset, data.length))) {
+		    throw new IOException("Data not terminated with barrier");
 		}
-		byte[] sealed = new byte[offset];
-		System.arraycopy(data, 0, sealed, 0, sealed.length);
-		return session.unseal(sealed, signature);
+		return session.unseal(Arrays.copyOfRange(data, 0, offset));
 	    } else {
 		throw new IOException("Unexpected line: " + pair.toString());
 	    }
