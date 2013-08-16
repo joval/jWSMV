@@ -209,9 +209,9 @@ public class ShellCommand extends Process implements Constants, Runnable {
 	    disposed = false;
 	    id = response.getCommandId();
 	    stdoutPipe = new PipedOutputStream();
-	    stdout = new PipedInputStream(stdoutPipe);
+	    stdout = new PipedInputStream(stdoutPipe, 65536);
 	    stderrPipe = new PipedOutputStream();
-	    stderr = new PipedInputStream(stderrPipe);
+	    stderr = new PipedInputStream(stderrPipe, 65536);
 	    thread = new Thread(group, this, "ShellCommand:" + id);
 	    thread.start();
 	} catch (FailedLoginException e) {
@@ -293,10 +293,9 @@ public class ShellCommand extends Process implements Constants, Runnable {
 		receiveOperation.addHeader(options);
 
 		//
-		// Buffer the output stream while passing along the error stream, then send all the output at once.
+		// Send error stream before output stream
 		//
 		ReceiveResponse response = receiveOperation.dispatch(port);
-		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 		for (StreamType stream : response.getStream()) {
 		    if (stream.isSetValue()) {
 			byte[] val = null;
@@ -306,17 +305,28 @@ public class ShellCommand extends Process implements Constants, Runnable {
 			    val = stream.getValue();
 			}
 			if (val.length > 0) {
-			    String streamName = stream.getName();
-			    if (Shell.STDOUT.equals(streamName)) {
-				buffer.write(val);
-			    } else if (Shell.STDERR.equals(streamName)) {
+			    if (Shell.STDERR.equals(stream.getName())) {
 				stderrPipe.write(val);
 			    }
 			}
 		    }
 		}
 		stderrPipe.flush();
-		stdoutPipe.write(buffer.toByteArray());
+		for (StreamType stream : response.getStream()) {
+		    if (stream.isSetValue()) {
+			byte[] val = null;
+			if (compress) {
+			    val = codec.decode(stream.getValue());
+			} else {
+			    val = stream.getValue();
+			}
+			if (val.length > 0) {
+			    if (Shell.STDOUT.equals(stream.getName())) {
+				stdoutPipe.write(val);
+			    }
+			}
+		    }
+		}
 		stdoutPipe.flush();
 		if (response.isSetCommandState()) {
 		    CommandStateType state = response.getCommandState();
@@ -445,6 +455,8 @@ public class ShellCommand extends Process implements Constants, Runnable {
      * An OutputStream implementation that is triggered by flush() to send data upstream to the process.
      */
     class CommandOutputStream extends ByteArrayOutputStream {
+	int MAX_BUFFER_LEN = 250000;
+
 	CommandOutputStream(int size) {
 	    super(size);
 	}
@@ -452,32 +464,38 @@ public class ShellCommand extends Process implements Constants, Runnable {
 	@Override
 	public synchronized void flush() throws IOException {
 	    try {
-		byte[] buff = toByteArray();
-		if (buff.length == 1 && buff[0] == CTL_C) {
+		byte[] data = toByteArray();
+		if (data.length == 1 && data[0] == CTL_C) {
 		    signal(SignalCode.CTL_C);
-		} else if (buff.length == 1 && buff[0] == CTL_BREAK) {
+		} else if (data.length == 1 && data[0] == CTL_BREAK) {
 		    signal(SignalCode.CTL_BREAK);
 		} else {
-		    StreamType stream = Factories.SHELL.createStreamType();
-		    stream.setName(Shell.STDIN);
-		    stream.setCommandId(id);
-		    if (compress) {
-			stream.setValue(codec.encode(buff));
-		    } else {
-			stream.setValue(buff);
-		    }
-		    reset();
-		    Send send = Factories.SHELL.createSend();
-		    send.getStream().add(stream);
-		    SendOperation sendOperation = new SendOperation(send);
-		    sendOperation.addResourceURI(SHELL_URI);
-		    sendOperation.addSelectorSet(selector);
+		    for (int offset=0; offset < data.length; offset+=MAX_BUFFER_LEN) {
+			int len = Math.min(MAX_BUFFER_LEN, data.length - offset);
+			byte[] buff = new byte[len];
+			System.arraycopy(data, offset, buff, 0, len);
 
-		    SendResponse response = sendOperation.dispatch(port);
-		    if (response.isSetDesiredStream()) {
-			StreamType rs = response.getDesiredStream();
-			if (rs.getName().equals(Shell.STDIN) && rs.getEnd()) {
-			    close();
+			StreamType stream = Factories.SHELL.createStreamType();
+			stream.setName(Shell.STDIN);
+			stream.setCommandId(id);
+			if (compress) {
+			    stream.setValue(codec.encode(buff));
+			} else {
+			    stream.setValue(buff);
+			}
+			Send send = Factories.SHELL.createSend();
+			send.getStream().add(stream);
+			SendOperation sendOperation = new SendOperation(send);
+			sendOperation.addResourceURI(SHELL_URI);
+			sendOperation.addSelectorSet(selector);
+
+			SendResponse response = sendOperation.dispatch(port);
+			if (response.isSetDesiredStream()) {
+			    StreamType rs = response.getDesiredStream();
+			    if (rs.getName().equals(Shell.STDIN) && rs.getEnd()) {
+				close();
+				break;
+			    }
 			}
 		    }
 		}
@@ -487,6 +505,8 @@ public class ShellCommand extends Process implements Constants, Runnable {
 		throw new IOException(e);
 	    } catch (FaultException e) {
 		throw new IOException(e);
+	    } finally {
+		reset();
 	    }
 	}
     }

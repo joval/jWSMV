@@ -9,6 +9,7 @@ import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.xml.namespace.QName;
 import javax.security.auth.login.FailedLoginException;
+import javax.xml.bind.Unmarshaller;
 import javax.xml.ws.http.HTTPException;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -60,6 +61,7 @@ public class CreateOperation extends BaseOperation<AnyXmlType, Object> {
 	    // ResourceCreated is ambiguous, so its children will be Nodes.  We must determine the appropriate
 	    // type and unmarshall the correct JAXB objects.
 	    //
+	    Unmarshaller unmarshaller = Port.getUnmarshaller();
 	    List<Element> list = ((ResourceCreated)obj).getAny();
 	    String ns = list.get(0).getNamespaceURI();
 	    if (WSA10.equals(ns)) {
@@ -86,7 +88,7 @@ public class CreateOperation extends BaseOperation<AnyXmlType, Object> {
 			int numChildren = node.getChildNodes().getLength();
 			for (int i=0; i < numChildren; i++) {
 			    Node child = node.getChildNodes().item(i);
-			    md.getAny().add(convert(child, port));
+			    md.getAny().add(convert(child, unmarshaller));
 			}
 			ref.setMetadata(md);
 		    } else if ("ReferenceParameters".equals(node.getLocalName())) {
@@ -101,7 +103,7 @@ public class CreateOperation extends BaseOperation<AnyXmlType, Object> {
 			int numChildren = node.getChildNodes().getLength();
 			for (int i=0; i < numChildren; i++) {
 			    Node param = node.getChildNodes().item(i);
-			    params.getAny().add(convert(param, port));
+			    params.getAny().add(convert(param, unmarshaller));
 			}
 			ref.setReferenceParameters(params);
 		    } else {
@@ -129,7 +131,7 @@ public class CreateOperation extends BaseOperation<AnyXmlType, Object> {
 			int numChildren = node.getChildNodes().getLength();
 			for (int i=0; i < numChildren; i++) {
 			    Node prop = node.getChildNodes().item(i);
-			    props.getAny().add(convert(prop, port));
+			    props.getAny().add(convert(prop, unmarshaller));
 			}
 			ref.setReferenceProperties(props);
 		    } else if ("ReferenceParameters".equals(node.getLocalName())) {
@@ -138,7 +140,7 @@ public class CreateOperation extends BaseOperation<AnyXmlType, Object> {
 			int numChildren = node.getChildNodes().getLength();
 			for (int i=0; i < numChildren; i++) {
 			    Node param = node.getChildNodes().item(i);
-			    params.getAny().add(convert(param, port));
+			    params.getAny().add(convert(param, unmarshaller));
 			}
 			ref.setReferenceParameters(params);
 		    } else if ("PortType".equals(node.getLocalName())) {
@@ -183,9 +185,9 @@ public class CreateOperation extends BaseOperation<AnyXmlType, Object> {
     /**
      * Attempt to unmarshal DOM node(s).
      */
-    private Object convert(Node node, Port port) {
+    private Object convert(Node node, Unmarshaller unmarshaller) {
 	try {
-	    return port.unmarshal(node);
+	    return unmarshaller.unmarshal(node);
 	} catch (JAXBException e) {
 	    return node;
 	}

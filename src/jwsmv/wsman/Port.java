@@ -81,6 +81,14 @@ public class Port implements Constants {
 	}
     }
 
+    public static final Marshaller getMarshaller() throws JAXBException {
+	return JAXB.createMarshaller();
+    }
+
+    public static final Unmarshaller getUnmarshaller() throws JAXBException {
+	return JAXB.createUnmarshaller();
+    }
+
     /**
      * Enumeration of supported authentication schemes.
      */
@@ -92,8 +100,6 @@ public class Port implements Constants {
     private String url;
     private Proxy proxy;
     private PasswordAuthentication cred, proxyCred = null;
-    private Marshaller marshaller;
-    private Unmarshaller unmarshaller;
     private boolean encrypt;
     private OutputStream debug;
     private LocLogger logger;
@@ -102,11 +108,6 @@ public class Port implements Constants {
      * Create a SOAP Web-Services port.
      */
     public Port(String url, PasswordAuthentication cred) throws JAXBException {
-	marshaller = JAXB.createMarshaller();
-	marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
-	marshaller.setProperty(Marshaller.JAXB_FRAGMENT, Boolean.TRUE);
-	marshaller.setProperty(Marshaller.JAXB_ENCODING, "UTF-8");
-	unmarshaller = JAXB.createUnmarshaller();
 	scheme = AuthScheme.NTLM;
 	logger = Message.getLogger();
 	proxy = Proxy.NO_PROXY;
@@ -146,16 +147,14 @@ public class Port implements Constants {
 	return logger;
     }
 
-    public synchronized void marshal(Object obj, Node node) throws JAXBException {
-	marshaller.marshal(obj, node);
-    }
-
-    public synchronized Object unmarshal(Node node) throws JAXBException {
-	return unmarshaller.unmarshal(new DOMSource(node));
-    }
-
     public Object dispatch(String action, List<Object> headers, Object input)
 		throws IOException, HTTPException, JAXBException, FaultException, FailedLoginException {
+
+	Unmarshaller unmarshaller = JAXB.createUnmarshaller();
+	Marshaller marshaller = JAXB.createMarshaller();
+	marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
+	marshaller.setProperty(Marshaller.JAXB_FRAGMENT, Boolean.TRUE);
+	marshaller.setProperty(Marshaller.JAXB_ENCODING, "UTF-8");
 
 	Header header = Factories.SOAP.createHeader();
 
@@ -263,9 +262,7 @@ public class Port implements Constants {
 		conn.setRequestProperty("Content-Type", "application/soap+xml;charset=UTF-8");
 
 		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-		synchronized(marshaller) {
-		    marshaller.marshal(Factories.SOAP.createEnvelope(request), buffer);
-		}
+		marshaller.marshal(Factories.SOAP.createEnvelope(request), buffer);
 		byte[] bytes = buffer.toByteArray();
 		conn.setFixedLengthStreamingMode(bytes.length);
 
@@ -286,11 +283,11 @@ public class Port implements Constants {
 		int code = conn.getResponseCode();
 		switch(code) {
 		  case HttpURLConnection.HTTP_INTERNAL_ERROR:
-		    result = getSOAPBodyContents(conn.getErrorStream(), conn.getContentType());
+		    result = getSOAPBodyContents(unmarshaller, marshaller, conn.getErrorStream(), conn.getContentType());
 		    break;
 
 		  case HttpURLConnection.HTTP_OK:
-		    result = getSOAPBodyContents(conn.getInputStream(), conn.getContentType());
+		    result = getSOAPBodyContents(unmarshaller, marshaller, conn.getInputStream(), conn.getContentType());
 		    break;
 
 		  case HttpURLConnection.HTTP_UNAUTHORIZED:
@@ -325,15 +322,15 @@ public class Port implements Constants {
     /**
      * Read a SOAP envelope and return the unmarshalled object contents of the body.
      */
-    private synchronized Object getSOAPBodyContents(InputStream in, String contentType) throws JAXBException, IOException {
+    private Object getSOAPBodyContents(Unmarshaller unmarshaller, Marshaller marshaller, InputStream in, String contentType)
+		throws JAXBException, IOException {
+
 	Object result = unmarshaller.unmarshal(in);
 	in.close();
 	if (debug != null) {
 	    StringBuffer sb = new StringBuffer("[").append(new Date().toString()).append("] - SOAP Reply:\r\n");
 	    debug.write(sb.toString().getBytes());
-	    synchronized(marshaller) {
-		marshaller.marshal(result, debug);
-	    }
+	    marshaller.marshal(result, debug);
 	    debug.write("\r\n".getBytes());
 	    debug.flush();
 	}
