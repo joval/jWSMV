@@ -6,14 +6,26 @@ include $(TOP)/customize.mk
 Default: all
 
 PLATFORM=unknown
-ifeq (Windows, $(findstring Windows,$(OS)))
-    PLATFORM=win
-    CLN=;
-    JAVACFLAGS=-Xlint:unchecked
+JAVA=$(JAVA_HOME)/bin/java
+JAVA_VERSION=1.6
+ifeq (1.7, $(findstring 1.7,`$(JAVA) -version`))
+    JAVA_VERSION=1.7
+    XJC=$(JAVA_HOME)/bin/xjc
 else
-    OS=$(shell uname)
-    CLN=:
+    XJC=$(JAVA) -jar $(JAXB_HOME)/lib/jaxb-xjc.jar
+endif
+ifeq (Windows, $(findstring Windows,$(OS)))
+  PLATFORM=win
+  CLN=;
+  JAVACFLAGS=-Xlint:unchecked
+else
+  OS=$(shell uname)
+  CLN=:
+  ifeq (1.7, $(JAVA_VERSION))
     JAVACFLAGS=-Xlint:unchecked -XDignore.symbol.file=true
+  else
+    JAVACFLAGS=-Xlint:unchecked -XDignore.symbol.file=true -Xbootclasspath/p:$(JAXB_HOME)/lib/jaxb-api.jar:$(JAXB_HOME)/lib/jaxb-impl.jar
+  endif
 endif
 
 ifeq (Linux, $(findstring Linux,$(OS)))
@@ -27,19 +39,8 @@ CWD=$(shell pwd)
 
 JRE_HOME=$(JAVA_HOME)/jre
 JRE=$(JRE_HOME)/bin/java
-JAVA=$(JAVA_HOME)/bin/java
-JAVA_VERSION=1.6
-ifeq (1.7, $(findstring 1.7,`$(JAVA) -version`))
-    JAVA_VERSION=1.7
-endif
-
-ifeq (1.7, $(JAVA_VERSION))
-    XJC=$(JAVA_HOME)/bin/xjc
-else
-    XJC=$(JAVA) -jar $(JAXB_HOME)/lib/jaxb-xjc.jar
-endif
-
 XJCFLAGS=-enableIntrospection
+
 JAVAC=$(JAVA_HOME)/bin/javac
 JAR=$(JAVA_HOME)/bin/jar
 CLASSLIB=$(JAVA_HOME)/jre/lib/rt.jar
