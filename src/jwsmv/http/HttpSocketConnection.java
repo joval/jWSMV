@@ -281,9 +281,18 @@ public class HttpSocketConnection extends AbstractConnection {
      */
     void setProxy(Proxy proxy) {
 	if (proxy == null) {
-	    this.proxy = Proxy.NO_PROXY;
+	    proxy = Proxy.NO_PROXY;
+	}
+	if (connected()) {
+	    if (!proxy.equals(this.proxy)) {
+		throw new IllegalStateException("Cannot change proxies when connected");
+	    }
 	} else {
-	    this.proxy = proxy;
+	    if (proxy == null) {
+		this.proxy = Proxy.NO_PROXY;
+	    } else {
+		this.proxy = proxy;
+	    }
 	}
     }
 

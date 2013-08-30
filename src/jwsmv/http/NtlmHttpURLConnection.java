@@ -63,17 +63,9 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 	}
     }
 
-    private static String createId(URL url, PasswordAuthentication cred, boolean encrypt) {
+    private static String createId(URL url) {
 	try {
 	    StringBuffer sb = new StringBuffer(new URL(url, "/").toString());
-	    if (cred != null && cred.getUserName() != null && cred.getPassword() != null) {
-		sb.append(":");
-		sb.append(cred.getUserName());
-		sb.append(":");
-		sb.append(cred.getPassword());
-	    }
-	    sb.append(":");
-	    sb.append(Boolean.toString(encrypt));
 	    return Base64.encodeBytes(MessageDigest.getInstance("MD5").digest(sb.toString().getBytes()));
 	} catch (Exception e) {
 	    throw new RuntimeException(e);
@@ -84,8 +76,8 @@ public class NtlmHttpURLConnection extends AbstractConnection {
     private HttpSocketConnection connection;
     private PasswordAuthentication cred;
     private NtlmSession session, proxySession;
+    private String proxyAuth;
     private boolean encrypt;
-    private String authProperty, authMethod;
     private boolean negotiated;
     private ByteArrayOutputStream cachedOutput;
     private NtlmPhase phase, proxyPhase;
@@ -96,7 +88,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
      */
     public static NtlmHttpURLConnection openConnection(URL url, PasswordAuthentication cred, boolean encrypt) {
 	synchronized(pool) {
-	    String id = createId(url, cred, encrypt);
+	    String id = createId(url);
 	    if (pool.containsKey(id)) {
 		Queue<NtlmHttpURLConnection> connections = pool.get(id);
 		while (connections.size() > 0) {
@@ -109,6 +101,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 			    //
 			    conn.connection.disconnect();
 			} else {
+Message.getLogger().info("DAS re-cycling NTLM connection");
 			    return conn;
 			}
 		    }
@@ -116,6 +109,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 	    } else {
 		pool.put(id, new ConcurrentLinkedQueue<NtlmHttpURLConnection>());
 	    }
+Message.getLogger().info("DAS creating NTLM connection");
 	    return new NtlmHttpURLConnection(url, cred, encrypt);
 	}
     }
@@ -128,7 +122,8 @@ public class NtlmHttpURLConnection extends AbstractConnection {
     }
 
     /**
-     * Connect through a proxy, using the specified credentials to negotiate with the proxy.
+     * Connect through a proxy using the specified credentials. If the username contains a back-slash character, the
+     * connection will use NTLM to negotiate with the proxy.
      */
     public void setProxy(Proxy proxy, PasswordAuthentication proxyCred) {
 	if (connected) {
@@ -136,8 +131,19 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 	} else {
 	    connection.setProxy(proxy);
 	    if (proxy != null && proxy.type() == Proxy.Type.HTTP && proxyCred != null) {
-		proxySession = createSession(proxyCred, false);
-		proxyPhase = NtlmPhase.TYPE1;
+		if (proxyCred.getUserName().indexOf("\\") == -1) {
+		    StringBuffer sb = new StringBuffer("Basic");
+		    sb.append(proxyCred.getUserName());
+		    sb.append(":");
+		    sb.append(proxyCred.getPassword());
+		    proxyAuth = sb.toString();
+		    proxySession = null;
+		    proxyPhase = null;
+		} else {
+		    proxyAuth = null;
+		    proxySession = createSession(proxyCred, false);
+		    proxyPhase = NtlmPhase.TYPE1;
+		}
 	    }
 	}
     }
@@ -154,6 +160,8 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 	if (proxyPhase == NtlmPhase.TYPE1) {
 	    connection.setRequestProperty("Proxy-Authorization", "Negotiate " +
 		Base64.encodeBytes(proxySession.generateNegotiateMessage()));
+	} else if (proxyAuth != null) {
+	    connection.setRequestProperty("Proxy-Authorization", proxyAuth);
 	}
 	if (phase == NtlmPhase.TYPE1) {
 	    connection.setRequestProperty("Authorization", "Negotiate " +
@@ -445,7 +453,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
     private NtlmHttpURLConnection(URL url, PasswordAuthentication cred, boolean encrypt) {
 	super(url);
 	this.cred = cred;
-	id = createId(url, cred, encrypt);
+	id = createId(url);
 	connection = new HttpSocketConnection(url);
 	if (cred == null) {
 	    phase = NtlmPhase.NA;
