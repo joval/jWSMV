@@ -101,7 +101,10 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 			    //
 			    conn.connection.disconnect();
 			} else {
-Message.getLogger().info("DAS re-cycling NTLM connection");
+			    //
+			    // Recycle the connection, but replace its credential first.
+			    //
+			    conn.cred = cred;
 			    return conn;
 			}
 		    }
@@ -109,7 +112,9 @@ Message.getLogger().info("DAS re-cycling NTLM connection");
 	    } else {
 		pool.put(id, new ConcurrentLinkedQueue<NtlmHttpURLConnection>());
 	    }
-Message.getLogger().info("DAS creating NTLM connection");
+	    //
+	    // Create a new connection
+	    //
 	    return new NtlmHttpURLConnection(url, cred, encrypt);
 	}
     }
