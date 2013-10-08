@@ -386,6 +386,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
      */
     void getResponse() throws IOException {
 	if (negotiated) return;
+	boolean close = false;
 	try {
 	    for (int attempt=1; attempt < 3; attempt++) {
 		connect();
@@ -401,6 +402,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 		for (Map.Entry<String, List<String>> entry : connection.getHeaderFields().entrySet()) {
 		    headerFields.put(entry.getKey(), entry.getValue());
 		}
+		close = "close".equals(headerFields.get("Connection"));
 
 		switch(responseCode) {
 		  case HTTP_UNAUTHORIZED:
@@ -413,6 +415,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 			    setRequestProperty("Authorization", auth.createAuthenticateHeader(session));
 			    phase = NtlmPhase.TYPE3;
 			} else {
+			    close = true;
 			    return;
 			}
 		    }
@@ -428,6 +431,7 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 			    setRequestProperty("Proxy-Authorization", auth.createAuthenticateHeader(proxySession));
 			    proxyPhase = NtlmPhase.TYPE3;
 			} else {
+			    close = true;
 			    return;
 			}
 		    }
@@ -444,7 +448,11 @@ public class NtlmHttpURLConnection extends AbstractConnection {
 	} catch (SignatureException e) {
 	    throw new IOException(e);
 	} finally {
-	    lastUsed = System.currentTimeMillis();
+	    if (close) {
+		lastUsed = 0; // don't recycle this connection!
+	    } else {
+		lastUsed = System.currentTimeMillis();
+	    }
 	    cachedOutput = null;
 	    negotiated = true;
 	}
