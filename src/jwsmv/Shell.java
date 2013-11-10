@@ -70,9 +70,11 @@ public class Shell implements Constants {
     public static final String STDIN	= "stdin";
 
     /**
-     * Return an Iterator of all the remote shells available at the specified port.
+     * Return an Iterator of the IDs of all the remote shells available at the specified port.
      */
-    public static Iterable<Shell> enumerate(Port port) throws JAXBException, IOException, FaultException, FailedLoginException {
+    public static Iterable<String> enumerate(Port port)
+		throws JAXBException, IOException, FaultException, FailedLoginException {
+
 	//
 	// Build an optimized enumerate operation.
 	//
@@ -88,7 +90,7 @@ public class Shell implements Constants {
 	//
 	// Capture shells listed in the enumerate response.
 	//
-	ArrayList<Shell> shells = new ArrayList<Shell>();
+	ArrayList<String> shellIds = new ArrayList<String>();
 	boolean endOfSequence = false;
 	List<Object> items = null;
 	EnumerateResponse response = operation.dispatch(port);
@@ -123,7 +125,7 @@ public class Shell implements Constants {
 			obj = ((JAXBElement)obj).getValue();
 		    }
 		    if (obj instanceof ShellType) {
-			shells.add(new Shell(port, ((ShellType)obj).getShellId()));
+			shellIds.add(((ShellType)obj).getShellId());
 		    } else {
 	        	System.out.println("Ignoring item: " + obj.getClass().getName());
 		    }
@@ -155,7 +157,15 @@ public class Shell implements Constants {
 		}
 	    }
 	}
-	return shells;
+	return shellIds;
+    }
+
+    /**
+     * Attach to an existing remote shell given its ID.  Keep in mind, when the returned instance is garbage collected,
+     * an attempt will be made to delete the remote shell.
+     */
+    public static Shell attach(Port port, String shellId) {
+	return new Shell(port, shellId);
     }
 
     private String id;
