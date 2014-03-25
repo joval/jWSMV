@@ -6,7 +6,6 @@ CLASSES=\
 	jwsmv.cim.StdRegProv				\
 	jwsmv.http.AbstractConnection			\
 	jwsmv.http.HttpSocketConnection			\
-	jwsmv.http.KerberosHttpURLConnection		\
 	jwsmv.http.NtlmHttpURLConnection		\
 	jwsmv.util.Base64				\
 	jwsmv.util.RFC822				\

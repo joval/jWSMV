@@ -50,5 +50,5 @@ $(BUILD)/%/:
 	mkdir -p $(subst PKG,,$@)
 
 test:
-#	$(JRE) -classpath $(RUNTIMECP) jwsmv.winrs.Client -r:localhost -u:joval -p:password -debug port.log -noe set
-	$(JRE) -classpath $(RUNTIMECP) jwsmv.cim.Client localhost joval password enc 32
+	$(JRE) -classpath $(RUNTIMECP) jwsmv.winrs.Client -r:FAMILY-PC -u:Administrator -p:password -debug port.log -noe powershell -NoProfile -File -
+#	$(JRE) -classpath $(RUNTIMECP) jwsmv.cim.Client localhost joval 4j2scanme enc 32

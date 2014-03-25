@@ -47,7 +47,6 @@ import org.w3c.soap.envelope.Header;
 import jwsmv.Constants;
 import jwsmv.Message;
 import jwsmv.http.HttpSocketConnection;
-import jwsmv.http.KerberosHttpURLConnection;
 import jwsmv.http.NtlmHttpURLConnection;
 import jwsmv.util.Base64;
 
@@ -55,9 +54,7 @@ import jwsmv.util.Base64;
  * A Web-Services port implementation for MS-WSMV (Microsoft Web Services Management for Vista).
  *
  * Since MS-WSMV is implemented on top of WS-Management, including the non-BP/1.0 compliant WS-Transfer specification,
- * it is necessary to implement a custom SOAP client to perform the various operations therein entailed.  This is the
- * implementation for those operations, which should support both NTLM and Kerberos authentication, and HTTP
- * encryption.
+ * it is necessary to implement a custom SOAP client to perform the various operations therein entailed.
  *
  * @author David A. Solin
  * @version %I% %G%
@@ -93,7 +90,7 @@ public class Port implements Constants {
      * Enumeration of supported authentication schemes.
      */
     public enum AuthScheme {
-	NONE, BASIC, NTLM, KERBEROS;
+	NONE, BASIC, NTLM;
     }
 
     private AuthScheme scheme;
@@ -227,11 +224,6 @@ public class Port implements Constants {
 			conn = (HttpURLConnection)u.openConnection(proxy);
 			break;
 		    }
-		    break;
-
-		  case KERBEROS:
-		    conn = KerberosHttpURLConnection.openConnection(u, cred, encrypt);
-		    ((KerberosHttpURLConnection)conn).setProxy(proxy, proxyCred);
 		    break;
 
 		  case NTLM:
@@ -399,7 +391,7 @@ public class Port implements Constants {
 	if (authFields == null || authFields.size() == 0) {
 	    switch(scheme) {
 	      case NONE:
-		return false;
+		throw new FailedLoginException();
 	      default:
 		scheme = AuthScheme.NONE;
 		return true;
@@ -408,7 +400,6 @@ public class Port implements Constants {
 
 	boolean basic = false;
 	boolean ntlm = false;
-	boolean kerberos = false;
 	boolean negotiate = false;
 
 	for (String val : authFields) {
@@ -416,8 +407,6 @@ public class Port implements Constants {
 		basic = true;
 	    } else if (val.equalsIgnoreCase("Negotiate")) {
 		negotiate = true;
-	    } else if (val.equalsIgnoreCase("Kerberos")) {
-		kerberos = true;
 	    } else if (val.equalsIgnoreCase("NTLM")) {
 		ntlm = true;
 	    }
@@ -432,35 +421,14 @@ public class Port implements Constants {
 		return true;
 	    }
 	}
-	if (negotiate) {
+	if (negotiate || ntlm) {
 	    switch(scheme) {
 	      case NONE:
 	      case BASIC:
 		scheme = AuthScheme.NTLM;
 		return true;
 	      case NTLM:
-		scheme = AuthScheme.KERBEROS;
-		return true;
-	      case KERBEROS:
 		throw new FailedLoginException();
-	    }
-	}
-	if (ntlm) {
-	    switch(scheme) {
-	      case NTLM:
-		throw new FailedLoginException();
-	      default:
-		scheme = AuthScheme.NTLM;
-		return true;
-	    }
-	}
-	if (kerberos) {
-	    switch(scheme) {
-	      case KERBEROS:
-		throw new FailedLoginException();
-	      default:
-		scheme = AuthScheme.KERBEROS;
-		return true;
 	    }
 	}
 	return false;
