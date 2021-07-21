@@ -1,4 +1,4 @@
-jWSMV&trade;: MS-WSMV implemented in Java&trade;
+jWSMV: MS-WSMV implemented in Java&trade;
 =============
 
 jWSMV is a pure-Java implementation of the MS-WSMV specification, which actually works with the out-of-the-box "winrm quickconfig" Windows remote management configuration settings. It includes a Java implementation of WinRS, the Microsoft&reg; utility that uses MS-WSMV to execute commands on remote Windows&reg; machines.
