@@ -1,0 +1,18 @@
+
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: jWSMV
+  title: jWSMV
+  description: This is a component for jWSMV
+  annotations:
+    backstage.io/code-coverage: enabled
+    jira/project-key: INFRA
+    observability.arcticwolf.com/metrics-enabled: "false"
+  labels:
+    arcticwolf.com/distributed: "false"
+spec:
+  lifecycle: experimental
+  type: service
+  owner: cidwolves
+  system: cylance-focus
